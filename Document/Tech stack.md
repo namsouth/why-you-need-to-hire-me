@@ -6,3 +6,5 @@
 - [ ] Back End
 	- [ ] Spring boot 
 		- [ ] installation [[SpringBoot - Cli]]
+		- [ ] JWT
+		- [ ] Websocket 
