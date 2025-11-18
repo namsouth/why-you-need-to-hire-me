@@ -8,3 +8,6 @@
 		- [ ] installation [[SpringBoot - Cli]]
 		- [ ] JWT
 		- [ ] Websocket 
+		- [ ] Encryption
+			- [ ] RSA 
+			- [ ] AES 
