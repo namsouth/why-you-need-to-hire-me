@@ -11,3 +11,8 @@
 		- [ ] Encryption
 			- [ ] RSA 
 			- [ ] AES 
+- [ ] Project Idea 
+	- [ ] Integrate with Deepseek API
+	- [ ] Integrate with Microsoft Team API 
+	- [ ] Integrate with n8n service 
+	- [ ] 
