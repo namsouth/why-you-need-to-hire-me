@@ -89,7 +89,7 @@ sequenceDiagram
     participant User as User (Browser)
     participant WebServer as WebServer (Vue)
     participant authServer as authServer (Spring Boot)
-    participant apiServer as apiServer (Spring)
+    participant apiServer as apiServer (Spring Boot)
 
     User->>WebServer: 1. Enter credentials & submit login form
     WebServer->>authServer: 2. POST /login<br>{ username, password }
