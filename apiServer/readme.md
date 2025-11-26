@@ -1,0 +1,12 @@
+techStack 
+- springBoot 
+- sqlite
+    - project table 
+        - uuid, projectName, projectDescription, apiSampleId, duration
+    - techStack table 
+        - uuid, techStackCode , techStackName, techDescription
+    - projectTech table
+        - uuid , projectId , techId, detailDescription, sampleCodeSnap 
+    - sampleApi 
+        -  id , apiCode, sequence, description, jsonContent 
+- reactWebUi
