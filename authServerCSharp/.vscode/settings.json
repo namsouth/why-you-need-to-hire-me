@@ -1,0 +1,4 @@
+{
+    "dotnet.automaticallySyncWithActiveItem": true,
+    "dotnet.preferVisualStudioCodeFileSystemWatcher": true
+}
