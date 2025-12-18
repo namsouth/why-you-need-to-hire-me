@@ -1,3 +1,5 @@
+
+## TODO
 - [ ] VM  setup check list 
     - Nginx  configuration ( Reverse Proxy)
         - Auth Server ( port 9001 )
