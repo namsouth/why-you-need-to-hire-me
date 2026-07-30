@@ -137,6 +137,39 @@ const app = createApp({
             maxWidth: Math.min(cols.value * 120, 600) + 'px',
         }));
 
+        // ----- Sequence Display Computed -----
+        const currentItem = computed(() => {
+            if (currentSequenceIndex.value < sequence.value.length) {
+                return sequence.value[currentSequenceIndex.value];
+            }
+            return null;
+        });
+
+        const nextItem = computed(() => {
+            const nextIndex = currentSequenceIndex.value + 1;
+            if (nextIndex < sequence.value.length) {
+                return sequence.value[nextIndex];
+            }
+            return null;
+        });
+
+        const progressText = computed(() => {
+            const total = sequence.value.length;
+            const current = Math.min(currentSequenceIndex.value + 1, total);
+            return `${current} / ${total}`;
+        });
+
+        const progressPercent = computed(() => {
+            const total = sequence.value.length;
+            if (total === 0) return 0;
+            const current = Math.min(currentSequenceIndex.value + 1, total);
+            return Math.round((current / total) * 100);
+        });
+
+        const isGameComplete = computed(() => {
+            return currentSequenceIndex.value >= sequence.value.length && sequence.value.length > 0;
+        });
+
         // ----- Helper Functions -----
         function getColourHex(name) {
             const found = AVAILABLE_COLOURS.find(c => c.name === name);
@@ -171,16 +204,6 @@ const app = createApp({
 
         function isColourSelected(name) {
             return settings.value.colours.includes(name);
-        }
-
-        function getSequenceClass(idx) {
-            if (idx === currentSequenceIndex.value && !gameOver.value) return 'active';
-            if (idx < currentSequenceIndex.value) return 'completed';
-            return '';
-        }
-
-        function getSequenceColour(item) {
-            return getColourHex(item);
         }
 
         function getCardClass(idx) {
@@ -597,11 +620,16 @@ const app = createApp({
             totalRounds,
             gridStyle,
             
+            // New sequence display computed
+            currentItem,
+            nextItem,
+            progressText,
+            progressPercent,
+            isGameComplete,
+            
             getColourHex,
-            getSequenceColour,
             formatTime,
             isColourSelected,
-            getSequenceClass,
             getCardClass,
             getCardStyle,
             handleCardClick,
