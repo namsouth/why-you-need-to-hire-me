@@ -45,7 +45,7 @@
         </div>
     </section>
 
-    <!-- ===== GAME HINTS ===== -->
+       <!-- ===== GAME HINTS ===== -->
     <section class="game-hints">
         <div class="hints-content">
             <!-- Mode Badge -->
@@ -54,7 +54,6 @@
                 <span class="mode-indicator" :class="modeClass">
                     {{ modeLabel }}
                 </span>
-                <!-- Show current round mode when in 'both' -->
                 <span v-if="mode === 'both' && gameStarted" 
                       class="mode-indicator ml-2" 
                       :class="roundModeClass">
@@ -62,19 +61,43 @@
                 </span>
             </div>
 
-            <!-- Sequence -->
-            <div class="sequence-container">
-                <span class="hints-label">Sequence:</span>
-                <div class="sequence-items">
-                    <span v-for="(item, idx) in sequence" :key="idx"
-                          class="sequence-item"
-                          :class="getSequenceClass(idx)"
-                          :style="idx === currentSequenceIndex && !gameOver ? 'color: ' + getSequenceColour(item) + ';' : ''">
-                        {{ item }}
+            <!-- NEW: Current + Next Sequence Display -->
+            <div class="sequence-display">
+                <div class="sequence-target">
+                    <span class="sequence-label">🎯</span>
+                    
+                    <!-- Current Item -->
+                    <span v-if="currentItem && !isGameComplete" 
+                          class="sequence-current"
+                          :style="{ color: getColourHex(currentItem) }">
+                        {{ currentItem }}
+                    </span>
+                    <span v-else-if="isGameComplete" class="sequence-done">
+                        ✅ Complete!
+                    </span>
+                    <span v-else class="sequence-placeholder">
+                        —
+                    </span>
+                    
+                    <!-- Arrow -->
+                    <span v-if="nextItem && !isGameComplete" class="sequence-arrow">→</span>
+                    
+                    <!-- Next Item -->
+                    <span v-if="nextItem && !isGameComplete" 
+                          class="sequence-next"
+                          :style="{ color: getColourHex(nextItem) }">
+                        {{ nextItem }}
                     </span>
                 </div>
-                <span v-if="gameOver" class="sequence-complete">✅ Complete!</span>
-                <span v-else-if="!gameStarted" class="sequence-hint">Click "Play" to start</span>
+
+                <!-- Progress -->
+                <div class="sequence-progress">
+                    <span class="progress-text">{{ progressText }}</span>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" 
+                             :style="{ width: progressPercent + '%' }"></div>
+                    </div>
+                </div>
             </div>
 
             <!-- Round Info -->
