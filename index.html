@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breath · Circle Countdown</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0f1a1e 0%, #1a2a2a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', 'Quicksand', system-ui, -apple-system, sans-serif;
+            padding: 1.5rem;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 720px;
+            width: 100%;
+            background: rgba(20, 30, 30, 0.55);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 4rem 4rem 3rem 3rem;
+            padding: 2.5rem 2rem 2.8rem;
+            box-shadow: 0 30px 50px -12px rgba(0,0,0,0.7), 0 0 0 1px rgba(220, 200, 170, 0.08);
+            border: 1px solid rgba(230, 210, 180, 0.06);
+            text-align: center;
+            color: #efe8dd;
+        }
+
+        h1 {
+            font-weight: 300;
+            font-size: 2.2rem;
+            letter-spacing: 3px;
+            color: #f0e3d4;
+            margin-bottom: 0.2rem;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.4);
+        }
+        h1 span {
+            font-weight: 600;
+            background: linear-gradient(135deg, #f7e3c0, #eacfaa);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .sub {
+            font-weight: 300;
+            font-size: 0.95rem;
+            letter-spacing: 4px;
+            color: #b7aa97;
+            margin-bottom: 1.8rem;
+            border-bottom: 1px dashed rgba(200, 180, 150, 0.15);
+            padding-bottom: 0.8rem;
+        }
+
+        /* -------- BREATH CIRCLE -------- */
+        .circle-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 1.2rem 0 1.2rem 0;
+            position: relative;
+            height: 280px;
+        }
+
+        .breath-circle {
+            width: 210px;
+            height: 210px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 30%, #f2e3d0, #dac2aa);
+            box-shadow: 0 0 60px 20px rgba(210, 180, 140, 0.25), 0 0 0 1px rgba(240, 220, 190, 0.15);
+            transition: width 0.8s ease, height 0.8s ease, box-shadow 0.8s ease, background 0.8s ease;
+            will-change: width, height, box-shadow;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* Dark overlay inside circle for better text contrast */
+        .breath-circle::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 50%;
+            background: radial-gradient(circle at center, rgba(10, 18, 18, 0.15) 0%, rgba(10, 18, 18, 0.35) 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .breath-circle > * {
+            position: relative;
+            z-index: 2;
+        }
+
+        .breath-circle .phase-icon {
+            font-size: 1.8rem;
+            line-height: 1.2;
+            transition: all 0.3s;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        }
+
+        .breath-circle .phase-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            opacity: 0.9;
+            transition: all 0.3s;
+            margin-top: 2px;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+        }
+
+        .breath-circle .seconds-display {
+            font-size: 4rem;
+            font-weight: 800;
+            letter-spacing: 3px;
+            line-height: 1.1;
+            transition: all 0.3s;
+            font-variant-numeric: tabular-nums;
+            /* Strong text shadow for visibility */
+            text-shadow: 
+                0 0 20px rgba(0,0,0,0.5),
+                0 0 40px rgba(0,0,0,0.3),
+                0 4px 8px rgba(0,0,0,0.4),
+                0 0 2px rgba(0,0,0,0.6);
+        }
+
+        /* Additional outline effect using -webkit-text-stroke */
+        .breath-circle .seconds-display {
+            -webkit-text-stroke: 1px rgba(0,0,0,0.15);
+        }
+
+        .breath-circle .seconds-unit {
+            font-size: 0.8rem;
+            font-weight: 500;
+            opacity: 0.7;
+            letter-spacing: 2px;
+            margin-top: -2px;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+        }
+
+        /* Color classes for phases - brighter, more vibrant */
+        .phase-inhale .seconds-display,
+        .phase-inhale .phase-name {
+            color: #f5e6c8;
+        }
+        .phase-inhale .phase-icon {
+            color: #f5e6c8;
+        }
+        .phase-inhale .seconds-display {
+            text-shadow: 
+                0 0 30px rgba(234, 207, 170, 0.5),
+                0 0 60px rgba(234, 207, 170, 0.2),
+                0 4px 8px rgba(0,0,0,0.5),
+                0 0 2px rgba(0,0,0,0.6);
+        }
+
+        .phase-hold .seconds-display,
+        .phase-hold .phase-name {
+            color: #e8ddd0;
+        }
+        .phase-hold .phase-icon {
+            color: #e8ddd0;
+        }
+        .phase-hold .seconds-display {
+            text-shadow: 
+                0 0 30px rgba(212, 197, 176, 0.4),
+                0 0 60px rgba(212, 197, 176, 0.15),
+                0 4px 8px rgba(0,0,0,0.5),
+                0 0 2px rgba(0,0,0,0.6);
+        }
+
+        .phase-exhale .seconds-display,
+        .phase-exhale .phase-name {
+            color: #a8dfd8;
+        }
+        .phase-exhale .phase-icon {
+            color: #a8dfd8;
+        }
+        .phase-exhale .seconds-display {
+            text-shadow: 
+                0 0 30px rgba(143, 201, 192, 0.5),
+                0 0 60px rgba(143, 201, 192, 0.2),
+                0 4px 8px rgba(0,0,0,0.5),
+                0 0 2px rgba(0,0,0,0.6);
+        }
+
+        .phase-idle .seconds-display {
+            color: #c6b9a6;
+            font-size: 2.8rem;
+            font-weight: 400;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        }
+        .phase-idle .phase-name {
+            color: #b7aa97;
+        }
+        .phase-idle .phase-icon {
+            color: #b7aa97;
+        }
+
+        /* -------- STATS -------- */
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 2.5rem;
+            margin: 0.6rem 0 1.4rem 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.4rem 1.6rem;
+            border-radius: 60px;
+            border: 1px solid rgba(200, 180, 150, 0.08);
+            backdrop-filter: blur(2px);
+            min-width: 110px;
+        }
+
+        .stat-item .stat-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #a99b89;
+            display: block;
+        }
+
+        .stat-item .stat-value {
+            font-size: 1.8rem;
+            font-weight: 300;
+            letter-spacing: 2px;
+            color: #f0e3d4;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* -------- CONTROLS -------- */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.8rem 1.2rem;
+            margin: 1.8rem 0 1.6rem;
+            background: rgba(0, 0, 0, 0.15);
+            padding: 1.2rem 1.2rem 1.6rem;
+            border-radius: 60px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(200, 180, 150, 0.08);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 70px;
+            flex: 1 0 70px;
+        }
+
+        .control-group label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #c6b9a6;
+            margin-bottom: 0.3rem;
+            font-weight: 400;
+        }
+
+        .control-group input[type="number"] {
+            width: 100%;
+            max-width: 90px;
+            padding: 0.4rem 0.2rem;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(200, 180, 150, 0.25);
+            border-radius: 30px;
+            color: #f0e3d4;
+            font-size: 1.1rem;
+            font-weight: 500;
+            text-align: center;
+            font-family: inherit;
+            transition: 0.2s;
+            outline: none;
+            backdrop-filter: blur(2px);
+        }
+
+        .control-group input[type="number"]:focus {
+            border-color: #d9b382;
+            box-shadow: 0 0 16px rgba(200, 160, 110, 0.2);
+            background: rgba(20, 30, 28, 0.6);
+        }
+
+        .control-group input[type="number"]:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            border-color: #4a4a40;
+        }
+
+        .control-group input[type="number"]::-webkit-inner-spin-button,
+        .control-group input[type="number"]::-webkit-outer-spin-button {
+            opacity: 0.5;
+            height: 30px;
+        }
+
+        .control-group .unit {
+            font-size: 0.65rem;
+            color: #a99b89;
+            margin-top: 0.2rem;
+            letter-spacing: 1px;
+        }
+
+        /* -------- BUTTONS -------- */
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.8rem;
+            margin: 1.2rem 0 0.2rem;
+        }
+
+        .btn {
+            background: rgba(30, 45, 40, 0.6);
+            backdrop-filter: blur(4px);
+            border: 1px solid #cab69b;
+            color: #efe8dd;
+            padding: 0.65rem 2rem;
+            font-size: 1rem;
+            font-weight: 500;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-family: inherit;
+            letter-spacing: 1.5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            flex: 1 0 auto;
+            min-width: 110px;
+        }
+
+        .btn:hover:not(:disabled) {
+            background: #d9b382;
+            color: #0f1a1e;
+            border-color: #d9b382;
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(200, 160, 110, 0.3);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: scale(0.96);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: scale(0.98);
+            border-color: #5f5a50;
+        }
+
+        .btn-primary {
+            background: #b1977a;
+            border-color: #dac2aa;
+            color: #121c1a;
+            font-weight: 600;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: #d9b382;
+            color: #0f1a1e;
+        }
+
+        .btn-reset {
+            background: rgba(40, 35, 30, 0.5);
+            border-color: #7f7466;
+        }
+
+        .footer-note {
+            margin-top: 2.2rem;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            color: #8f8474;
+            border-top: 1px solid rgba(200, 180, 150, 0.08);
+            padding-top: 1.4rem;
+            display: flex;
+            justify-content: center;
+            gap: 1.8rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-note .inhale-color { color: #f5e6c8; }
+        .footer-note .exhale-color { color: #a8dfd8; }
+        .footer-note .hold-color { color: #e8ddd0; }
+
+        @media (max-width: 480px) {
+            .container { padding: 1.6rem 1rem; border-radius: 2.4rem; }
+            .controls { flex-direction: column; align-items: stretch; gap: 0.8rem; border-radius: 30px; padding: 1.2rem 1rem; }
+            .control-group { flex-direction: row; justify-content: space-between; align-items: center; gap: 0.4rem; flex: 1; }
+            .control-group input[type="number"] { max-width: 100px; }
+            .control-group label { margin-bottom: 0; min-width: 50px; text-align: left; }
+            .circle-wrapper { height: 220px; }
+            .breath-circle { width: 170px; height: 170px; }
+            .breath-circle .seconds-display { font-size: 3.2rem; }
+            .breath-circle .phase-icon { font-size: 1.4rem; }
+            .breath-circle .phase-name { font-size: 0.75rem; }
+            .stats { gap: 1rem; }
+            .stat-item { min-width: 80px; padding: 0.3rem 1rem; }
+            .stat-item .stat-value { font-size: 1.4rem; }
+            .btn { min-width: 100px; padding: 0.6rem 1.2rem; }
+        }
+
+        @media (max-width: 380px) {
+            .circle-wrapper { height: 180px; }
+            .breath-circle { width: 140px; height: 140px; }
+            .breath-circle .seconds-display { font-size: 2.6rem; }
+            .breath-circle .phase-icon { font-size: 1.2rem; }
+            .breath-circle .phase-name { font-size: 0.65rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🌬️ <span>breath</span> flow</h1>
+    <div class="sub">inhale · hold · exhale · hold</div>
+
+    <!-- breath circle with countdown -->
+    <div class="circle-wrapper">
+        <div class="breath-circle phase-idle" id="breathCircle">
+            <span class="phase-icon" id="phaseIcon">⏳</span>
+            <span class="phase-name" id="phaseName">ready</span>
+            <span class="seconds-display" id="secondsDisplay">—</span>
+            <span class="seconds-unit">seconds</span>
+        </div>
+    </div>
+
+    <!-- stats -->
+    <div class="stats">
+        <div class="stat-item">
+            <span class="stat-label">rounds</span>
+            <span class="stat-value" id="roundCount">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">total time</span>
+            <span class="stat-value" id="totalTime">0:00</span>
+        </div>
+    </div>
+
+    <!-- controls -->
+    <div class="controls" id="controlPanel">
+        <div class="control-group">
+            <label for="inhaleInput">inhale</label>
+            <input type="number" id="inhaleInput" min="0.5" max="60" step="0.5" value="4">
+            <span class="unit">seconds</span>
+        </div>
+        <div class="control-group">
+            <label for="holdInInput">hold</label>
+            <input type="number" id="holdInInput" min="0.5" max="60" step="0.5" value="3">
+            <span class="unit">seconds</span>
+        </div>
+        <div class="control-group">
+            <label for="exhaleInput">exhale</label>
+            <input type="number" id="exhaleInput" min="0.5" max="60" step="0.5" value="4.5">
+            <span class="unit">seconds</span>
+        </div>
+        <div class="control-group">
+            <label for="holdOutInput">hold</label>
+            <input type="number" id="holdOutInput" min="0.5" max="60" step="0.5" value="2.5">
+            <span class="unit">seconds</span>
+        </div>
+    </div>
+
+    <!-- buttons -->
+    <div class="action-buttons">
+        <button class="btn btn-primary" id="startBtn">▶ start</button>
+        <button class="btn btn-reset" id="resetBtn">⟲ reset</button>
+    </div>
+
+    <div class="footer-note">
+        <span class="inhale-color">━━ inhale</span>
+        <span class="hold-color">━━ hold</span>
+        <span class="exhale-color">━━ exhale</span>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // DOM refs
+        const circle = document.getElementById('breathCircle');
+        const phaseIcon = document.getElementById('phaseIcon');
+        const phaseName = document.getElementById('phaseName');
+        const secondsDisplay = document.getElementById('secondsDisplay');
+        const roundCountEl = document.getElementById('roundCount');
+        const totalTimeEl = document.getElementById('totalTime');
+
+        const inhaleInput = document.getElementById('inhaleInput');
+        const holdInInput = document.getElementById('holdInInput');
+        const exhaleInput = document.getElementById('exhaleInput');
+        const holdOutInput = document.getElementById('holdOutInput');
+
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        // constants
+        const BASE_SIZE = 210;
+        const MAX_SIZE = 290;
+        const MIN_SIZE = 130;
+
+        // state
+        let isRunning = false;
+        let timerId = null;
+        let currentPhase = 'idle';
+        let phaseStartTime = 0;
+        let currentPhaseDuration = 0;
+
+        let roundCount = 0;
+        let totalSeconds = 0;
+        let totalTimerId = null;
+
+        // ----- helpers -----
+        function getDurations() {
+            return {
+                inhale: Math.max(0.5, parseFloat(inhaleInput.value) || 4),
+                holdIn: Math.max(0.5, parseFloat(holdInInput.value) || 3),
+                exhale: Math.max(0.5, parseFloat(exhaleInput.value) || 4.5),
+                holdOut: Math.max(0.5, parseFloat(holdOutInput.value) || 2.5)
+            };
+        }
+
+        // ----- update circle size & appearance -----
+        function setCircleState(phase, progress, remainingSeconds) {
+            // Update size
+            let size, glowIntensity;
+            if (phase === 'inhale') {
+                size = BASE_SIZE + (MAX_SIZE - BASE_SIZE) * progress;
+                glowIntensity = 0.3 + 0.6 * progress;
+            } else if (phase === 'holdIn') {
+                size = MAX_SIZE;
+                glowIntensity = 0.9 + 0.1 * Math.sin(progress * Math.PI);
+            } else if (phase === 'exhale') {
+                size = MAX_SIZE - (MAX_SIZE - MIN_SIZE) * progress;
+                glowIntensity = 0.9 - 0.6 * progress;
+            } else if (phase === 'holdOut') {
+                size = MIN_SIZE;
+                glowIntensity = 0.2 + 0.1 * Math.sin(progress * Math.PI * 0.8);
+            } else {
+                size = BASE_SIZE;
+                glowIntensity = 0.2;
+            }
+
+            size = Math.min(MAX_SIZE, Math.max(MIN_SIZE, size));
+            const glow = Math.min(1.2, Math.max(0.1, glowIntensity));
+            circle.style.width = size + 'px';
+            circle.style.height = size + 'px';
+
+            let glowColor = 'rgba(210, 180, 140, ';
+            if (phase === 'inhale' || phase === 'holdIn') {
+                glowColor = 'rgba(230, 200, 160, ';
+            } else if (phase === 'exhale' || phase === 'holdOut') {
+                glowColor = 'rgba(140, 200, 190, ';
+            } else {
+                glowColor = 'rgba(200, 180, 150, ';
+            }
+            const shadow = `0 0 ${40 + 50 * glow}px ${16 + 24 * glow}px ${glowColor}${Math.min(0.7, 0.2 + 0.5 * glow)}`;
+            circle.style.boxShadow = `${shadow}, 0 0 0 1px rgba(240, 220, 190, 0.2)`;
+
+            // Update content
+            let icon = '⏳';
+            let name = 'ready';
+            let cssClass = 'phase-idle';
+            let displayText = '—';
+
+            if (phase === 'inhale') {
+                icon = '🌬️';
+                name = 'inhale';
+                cssClass = 'phase-inhale';
+                displayText = Math.ceil(remainingSeconds) + '';
+            } else if (phase === 'holdIn') {
+                icon = '🌀';
+                name = 'hold';
+                cssClass = 'phase-hold';
+                displayText = Math.ceil(remainingSeconds) + '';
+            } else if (phase === 'exhale') {
+                icon = '🌿';
+                name = 'exhale';
+                cssClass = 'phase-exhale';
+                displayText = Math.ceil(remainingSeconds) + '';
+            } else if (phase === 'holdOut') {
+                icon = '🌀';
+                name = 'hold';
+                cssClass = 'phase-hold';
+                displayText = Math.ceil(remainingSeconds) + '';
+            } else {
+                icon = '⏳';
+                name = 'ready';
+                cssClass = 'phase-idle';
+                displayText = '—';
+            }
+
+            // Remove all phase classes
+            circle.classList.remove('phase-inhale', 'phase-hold', 'phase-exhale', 'phase-idle');
+            circle.classList.add(cssClass);
+
+            phaseIcon.textContent = icon;
+            phaseName.textContent = name;
+            secondsDisplay.textContent = displayText;
+        }
+
+        // ----- reset to idle -----
+        function setIdleState() {
+            circle.style.width = BASE_SIZE + 'px';
+            circle.style.height = BASE_SIZE + 'px';
+            circle.style.boxShadow = `0 0 60px 20px rgba(210, 180, 140, 0.2), 0 0 0 1px rgba(240, 220, 190, 0.15)`;
+            circle.classList.remove('phase-inhale', 'phase-hold', 'phase-exhale');
+            circle.classList.add('phase-idle');
+            phaseIcon.textContent = '⏳';
+            phaseName.textContent = 'ready';
+            secondsDisplay.textContent = '—';
+        }
+
+        // ----- update stats -----
+        function updateStats() {
+            roundCountEl.textContent = roundCount;
+            const mins = Math.floor(totalSeconds / 60);
+            const secs = Math.floor(totalSeconds % 60);
+            totalTimeEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // ----- stop -----
+        function stopBreath() {
+            if (timerId) {
+                clearInterval(timerId);
+                timerId = null;
+            }
+            if (totalTimerId) {
+                clearInterval(totalTimerId);
+                totalTimerId = null;
+            }
+            isRunning = false;
+            currentPhase = 'idle';
+            startBtn.textContent = '▶ start';
+            startBtn.disabled = false;
+            document.querySelectorAll('.controls input').forEach(inp => inp.disabled = false);
+        }
+
+        // ----- start phase -----
+        function startPhase(phase) {
+            if (!isRunning) return;
+            currentPhase = phase;
+            const durations = getDurations();
+            let duration = 0;
+            switch (phase) {
+                case 'inhale': duration = durations.inhale; break;
+                case 'holdIn': duration = durations.holdIn; break;
+                case 'exhale': duration = durations.exhale; break;
+                case 'holdOut': duration = durations.holdOut; break;
+                default: duration = 1;
+            }
+            currentPhaseDuration = duration;
+            phaseStartTime = performance.now() / 1000;
+
+            if (timerId) {
+                clearInterval(timerId);
+                timerId = null;
+            }
+            timerId = setInterval(() => {
+                if (!isRunning) return;
+                const now = performance.now() / 1000;
+                const elapsed = now - phaseStartTime;
+                const progress = Math.min(1, elapsed / currentPhaseDuration);
+                const remaining = Math.max(0, currentPhaseDuration - elapsed);
+
+                setCircleState(currentPhase, progress, remaining);
+
+                if (progress >= 1) {
+                    let nextPhase = 'idle';
+                    switch (currentPhase) {
+                        case 'inhale': nextPhase = 'holdIn'; break;
+                        case 'holdIn': nextPhase = 'exhale'; break;
+                        case 'exhale': nextPhase = 'holdOut'; break;
+                        case 'holdOut':
+                            nextPhase = 'inhale';
+                            roundCount++;
+                            updateStats();
+                            break;
+                        default: nextPhase = 'inhale';
+                    }
+                    if (timerId) {
+                        clearInterval(timerId);
+                        timerId = null;
+                    }
+                    if (isRunning) {
+                        startPhase(nextPhase);
+                    }
+                }
+            }, 30);
+        }
+
+        // ----- start -----
+        function startBreath() {
+            if (isRunning) return;
+            const d = getDurations();
+            if (d.inhale < 0.5 || d.holdIn < 0.5 || d.exhale < 0.5 || d.holdOut < 0.5) {
+                alert('Please enter values of at least 0.5 seconds.');
+                return;
+            }
+
+            roundCount = 0;
+            totalSeconds = 0;
+            updateStats();
+
+            document.querySelectorAll('.controls input').forEach(inp => inp.disabled = true);
+            isRunning = true;
+            startBtn.textContent = '⏳ running';
+            startBtn.disabled = true;
+
+            if (totalTimerId) clearInterval(totalTimerId);
+            totalTimerId = setInterval(() => {
+                if (isRunning) {
+                    totalSeconds += 0.1;
+                    updateStats();
+                }
+            }, 100);
+
+            startPhase('inhale');
+        }
+
+        // ----- reset -----
+        function resetBreath() {
+            stopBreath();
+            setIdleState();
+            document.querySelectorAll('.controls input').forEach(inp => inp.disabled = false);
+            startBtn.textContent = '▶ start';
+            startBtn.disabled = false;
+            roundCount = 0;
+            totalSeconds = 0;
+            updateStats();
+            circle.style.width = BASE_SIZE + 'px';
+            circle.style.height = BASE_SIZE + 'px';
+            circle.style.boxShadow = `0 0 60px 20px rgba(210, 180, 140, 0.2), 0 0 0 1px rgba(240, 220, 190, 0.15)`;
+        }
+
+        // ----- events -----
+        startBtn.addEventListener('click', startBreath);
+        resetBtn.addEventListener('click', resetBreath);
+
+        // init
+        setIdleState();
+        updateStats();
+    })();
+</script>
+</body>
+</html>
