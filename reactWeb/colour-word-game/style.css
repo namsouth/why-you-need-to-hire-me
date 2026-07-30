@@ -68,10 +68,13 @@
     background: rgba(59, 130, 246, 0.3);
     color: #93c5fd;
 }
-
 .mode-colour {
     background: rgba(168, 85, 247, 0.3);
     color: #c4b5fd;
+}
+.mode-both {
+    background: rgba(236, 72, 153, 0.3);
+    color: #f9a8d4;
 }
 
 .sequence-container {
@@ -129,7 +132,7 @@
     margin-left: auto;
 }
 
-/* ----- GRID ----- */
+/* ----- GRID CONTAINER ----- */
 .grid-container {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 12px;
@@ -137,6 +140,7 @@
     backdrop-filter: blur(4px);
     border: 1px solid rgba(255, 255, 255, 0.08);
     margin-bottom: 1rem;
+    position: relative; /* for overlays */
 }
 
 .game-grid {
@@ -147,7 +151,7 @@
 
 /* ----- CARDS ----- */
 .card {
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.3s ease;
     cursor: pointer;
     user-select: none;
     aspect-ratio: 1 / 1;
@@ -156,13 +160,12 @@
     justify-content: center;
     font-weight: 700;
     font-size: 1.2rem;
-    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     border-radius: 12px;
     border: 3px solid transparent;
     position: relative;
 }
 
-.card:hover:not(.disabled) {
+.card:hover:not(.disabled):not(.matched) {
     transform: scale(1.04);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
@@ -183,10 +186,77 @@
     opacity: 0.7;
 }
 
+.card.matched {
+    opacity: 0.35;
+    cursor: default;
+    transform: scale(0.95);
+    border-color: rgba(255,255,255,0.1);
+}
+
 .word-text {
     font-weight: 800;
     letter-spacing: 0.5px;
-    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+    color: white;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.5);
+}
+
+/* ----- GRID OVERLAYS (modal on grid) ----- */
+.grid-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.75);
+    backdrop-filter: blur(6px);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.overlay-content {
+    text-align: center;
+    padding: 2rem;
+}
+
+.countdown-number {
+    font-size: 8rem;
+    font-weight: 800;
+    color: white;
+    text-shadow: 0 0 40px rgba(96, 165, 250, 0.5);
+    animation: pulse 0.5s ease-in-out;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1.5); opacity: 0; }
+    50% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.summary-content {
+    min-width: 250px;
+}
+
+.summary-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 1.5rem 0;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.summary-label {
+    font-size: 0.875rem;
+    color: #94a3b8;
+}
+
+.summary-value {
+    font-size: 2rem;
+    font-weight: 700;
 }
 
 /* ----- CONTROLS ----- */
@@ -268,7 +338,7 @@
     margin-top: 0.5rem;
 }
 
-/* ----- MODALS ----- */
+/* ----- MODALS (settings / history) ----- */
 .modal-overlay {
     position: fixed;
     inset: 0;
@@ -499,6 +569,17 @@
     .modal-content {
         padding: 1rem;
         margin: 0.5rem;
+    }
+
+    .countdown-number {
+        font-size: 5rem;
+    }
+
+    .summary-stats {
+        gap: 1rem;
+    }
+    .summary-value {
+        font-size: 1.5rem;
     }
 }
 
