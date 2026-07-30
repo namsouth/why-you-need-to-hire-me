@@ -130,16 +130,11 @@
             line-height: 1.1;
             transition: all 0.3s;
             font-variant-numeric: tabular-nums;
-            /* Strong text shadow for visibility */
             text-shadow: 
                 0 0 20px rgba(0,0,0,0.5),
                 0 0 40px rgba(0,0,0,0.3),
                 0 4px 8px rgba(0,0,0,0.4),
                 0 0 2px rgba(0,0,0,0.6);
-        }
-
-        /* Additional outline effect using -webkit-text-stroke */
-        .breath-circle .seconds-display {
             -webkit-text-stroke: 1px rgba(0,0,0,0.15);
         }
 
@@ -152,7 +147,16 @@
             text-shadow: 0 2px 12px rgba(0,0,0,0.4);
         }
 
-        /* Color classes for phases - brighter, more vibrant */
+        /* Skip phase indicator */
+        .breath-circle .skip-indicator {
+            font-size: 1rem;
+            font-weight: 500;
+            letter-spacing: 2px;
+            opacity: 0.6;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+        }
+
+        /* Color classes for phases */
         .phase-inhale .seconds-display,
         .phase-inhale .phase-name {
             color: #f5e6c8;
@@ -397,6 +401,20 @@
         .footer-note .exhale-color { color: #a8dfd8; }
         .footer-note .hold-color { color: #e8ddd0; }
 
+        /* Save indicator */
+        .save-indicator {
+            font-size: 0.65rem;
+            color: #8f8474;
+            margin-top: 0.4rem;
+            opacity: 0.6;
+            letter-spacing: 1px;
+            transition: opacity 0.3s;
+        }
+        .save-indicator.saved {
+            opacity: 1;
+            color: #a8dfd8;
+        }
+
         @media (max-width: 480px) {
             .container { padding: 1.6rem 1rem; border-radius: 2.4rem; }
             .controls { flex-direction: column; align-items: stretch; gap: 0.8rem; border-radius: 30px; padding: 1.2rem 1rem; }
@@ -454,25 +472,28 @@
     <div class="controls" id="controlPanel">
         <div class="control-group">
             <label for="inhaleInput">inhale</label>
-            <input type="number" id="inhaleInput" min="0.5" max="60" step="0.5" value="4">
+            <input type="number" id="inhaleInput" min="0" max="60" step="0.5" value="4">
             <span class="unit">seconds</span>
         </div>
         <div class="control-group">
             <label for="holdInInput">hold</label>
-            <input type="number" id="holdInInput" min="0.5" max="60" step="0.5" value="3">
+            <input type="number" id="holdInInput" min="0" max="60" step="0.5" value="7">
             <span class="unit">seconds</span>
         </div>
         <div class="control-group">
             <label for="exhaleInput">exhale</label>
-            <input type="number" id="exhaleInput" min="0.5" max="60" step="0.5" value="4.5">
+            <input type="number" id="exhaleInput" min="0" max="60" step="0.5" value="8">
             <span class="unit">seconds</span>
         </div>
         <div class="control-group">
             <label for="holdOutInput">hold</label>
-            <input type="number" id="holdOutInput" min="0.5" max="60" step="0.5" value="2.5">
+            <input type="number" id="holdOutInput" min="0" max="60" step="0.5" value="0">
             <span class="unit">seconds</span>
         </div>
     </div>
+
+    <!-- save indicator -->
+    <div class="save-indicator" id="saveIndicator">⚡ settings auto-saved</div>
 
     <!-- buttons -->
     <div class="action-buttons">
@@ -484,18 +505,20 @@
         <span class="inhale-color">━━ inhale</span>
         <span class="hold-color">━━ hold</span>
         <span class="exhale-color">━━ exhale</span>
+        <span style="color:#8f8474; opacity:0.5;">(0 = skip)</span>
     </div>
 </div>
 
 <script>
     (function() {
-        // DOM refs
+        // ----- DOM refs -----
         const circle = document.getElementById('breathCircle');
         const phaseIcon = document.getElementById('phaseIcon');
         const phaseName = document.getElementById('phaseName');
         const secondsDisplay = document.getElementById('secondsDisplay');
         const roundCountEl = document.getElementById('roundCount');
         const totalTimeEl = document.getElementById('totalTime');
+        const saveIndicator = document.getElementById('saveIndicator');
 
         const inhaleInput = document.getElementById('inhaleInput');
         const holdInInput = document.getElementById('holdInInput');
@@ -505,34 +528,102 @@
         const startBtn = document.getElementById('startBtn');
         const resetBtn = document.getElementById('resetBtn');
 
-        // constants
+        // ----- constants -----
         const BASE_SIZE = 210;
         const MAX_SIZE = 290;
         const MIN_SIZE = 130;
+        const STORAGE_KEY = 'breath_config';
 
-        // state
+        // ----- state -----
         let isRunning = false;
         let timerId = null;
         let currentPhase = 'idle';
         let phaseStartTime = 0;
         let currentPhaseDuration = 0;
-
         let roundCount = 0;
         let totalSeconds = 0;
         let totalTimerId = null;
 
+        // ----- localStorage helpers -----
+        function loadConfig() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const config = JSON.parse(stored);
+                    if (config.inhale !== undefined) inhaleInput.value = config.inhale;
+                    if (config.holdIn !== undefined) holdInInput.value = config.holdIn;
+                    if (config.exhale !== undefined) exhaleInput.value = config.exhale;
+                    if (config.holdOut !== undefined) holdOutInput.value = config.holdOut;
+                }
+            } catch (e) {
+                console.log('Error loading config:', e);
+            }
+        }
+
+        function saveConfig() {
+            try {
+                const config = {
+                    inhale: parseFloat(inhaleInput.value) || 0,
+                    holdIn: parseFloat(holdInInput.value) || 0,
+                    exhale: parseFloat(exhaleInput.value) || 0,
+                    holdOut: parseFloat(holdOutInput.value) || 0
+                };
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+                // Show save indicator feedback
+                saveIndicator.classList.add('saved');
+                clearTimeout(saveIndicator._timeout);
+                saveIndicator._timeout = setTimeout(() => {
+                    saveIndicator.classList.remove('saved');
+                }, 1500);
+            } catch (e) {
+                console.log('Error saving config:', e);
+            }
+        }
+
+        // Auto-save on input change
+        [inhaleInput, holdInInput, exhaleInput, holdOutInput].forEach(input => {
+            input.addEventListener('change', saveConfig);
+            input.addEventListener('input', () => {
+                // Debounced save for live updates
+                clearTimeout(input._saveTimeout);
+                input._saveTimeout = setTimeout(saveConfig, 300);
+            });
+        });
+
         // ----- helpers -----
         function getDurations() {
             return {
-                inhale: Math.max(0.5, parseFloat(inhaleInput.value) || 4),
-                holdIn: Math.max(0.5, parseFloat(holdInInput.value) || 3),
-                exhale: Math.max(0.5, parseFloat(exhaleInput.value) || 4.5),
-                holdOut: Math.max(0.5, parseFloat(holdOutInput.value) || 2.5)
+                inhale: Math.max(0, parseFloat(inhaleInput.value) || 0),
+                holdIn: Math.max(0, parseFloat(holdInInput.value) || 0),
+                exhale: Math.max(0, parseFloat(exhaleInput.value) || 0),
+                holdOut: Math.max(0, parseFloat(holdOutInput.value) || 0)
             };
         }
 
+        // Get next phase, skipping zero-duration phases
+        function getNextPhase(currentPhase, durations) {
+            const phaseOrder = ['inhale', 'holdIn', 'exhale', 'holdOut'];
+            const currentIndex = phaseOrder.indexOf(currentPhase);
+            
+            // Find the next phase with duration > 0
+            for (let i = 1; i <= phaseOrder.length; i++) {
+                const nextIndex = (currentIndex + i) % phaseOrder.length;
+                const phase = phaseOrder[nextIndex];
+                if (durations[phase] > 0) {
+                    return phase;
+                }
+            }
+            return 'idle'; // No phases with duration > 0
+        }
+
+        // Check if any phase has duration > 0
+        function hasAnyPhase(durations) {
+            return durations.inhale > 0 || durations.holdIn > 0 || 
+                   durations.exhale > 0 || durations.holdOut > 0;
+        }
+
         // ----- update circle size & appearance -----
-        function setCircleState(phase, progress, remainingSeconds) {
+        function setCircleState(phase, progress, remainingSeconds, isSkip = false) {
             // Update size
             let size, glowIntensity;
             if (phase === 'inhale') {
@@ -574,7 +665,12 @@
             let cssClass = 'phase-idle';
             let displayText = '—';
 
-            if (phase === 'inhale') {
+            if (isSkip) {
+                icon = '⏭️';
+                name = 'skipped';
+                cssClass = 'phase-idle';
+                displayText = '0';
+            } else if (phase === 'inhale') {
                 icon = '🌬️';
                 name = 'inhale';
                 cssClass = 'phase-inhale';
@@ -650,23 +746,46 @@
         // ----- start phase -----
         function startPhase(phase) {
             if (!isRunning) return;
-            currentPhase = phase;
+            
             const durations = getDurations();
-            let duration = 0;
-            switch (phase) {
-                case 'inhale': duration = durations.inhale; break;
-                case 'holdIn': duration = durations.holdIn; break;
-                case 'exhale': duration = durations.exhale; break;
-                case 'holdOut': duration = durations.holdOut; break;
-                default: duration = 1;
+            
+            // If phase duration is 0, skip to next valid phase
+            if (durations[phase] === 0) {
+                const nextPhase = getNextPhase(phase, durations);
+                if (nextPhase === 'idle' || !hasAnyPhase(durations)) {
+                    // No more phases, stop or idle
+                    if (timerId) {
+                        clearInterval(timerId);
+                        timerId = null;
+                    }
+                    // Show skip message briefly then idle
+                    setCircleState(phase, 0, 0, true);
+                    setTimeout(() => {
+                        if (!isRunning) return;
+                        setIdleState();
+                        stopBreath();
+                    }, 800);
+                    return;
+                }
+                // Show skip indicator briefly then move to next phase
+                setCircleState(phase, 0, 0, true);
+                setTimeout(() => {
+                    if (isRunning) {
+                        startPhase(nextPhase);
+                    }
+                }, 400);
+                return;
             }
-            currentPhaseDuration = duration;
+
+            currentPhase = phase;
+            currentPhaseDuration = durations[phase];
             phaseStartTime = performance.now() / 1000;
 
             if (timerId) {
                 clearInterval(timerId);
                 timerId = null;
             }
+            
             timerId = setInterval(() => {
                 if (!isRunning) return;
                 const now = performance.now() / 1000;
@@ -677,21 +796,23 @@
                 setCircleState(currentPhase, progress, remaining);
 
                 if (progress >= 1) {
-                    let nextPhase = 'idle';
-                    switch (currentPhase) {
-                        case 'inhale': nextPhase = 'holdIn'; break;
-                        case 'holdIn': nextPhase = 'exhale'; break;
-                        case 'exhale': nextPhase = 'holdOut'; break;
-                        case 'holdOut':
-                            nextPhase = 'inhale';
-                            roundCount++;
-                            updateStats();
-                            break;
-                        default: nextPhase = 'inhale';
-                    }
+                    // Phase complete, find next valid phase
+                    const nextPhase = getNextPhase(currentPhase, durations);
                     if (timerId) {
                         clearInterval(timerId);
                         timerId = null;
+                    }
+                    if (nextPhase === 'idle' || !hasAnyPhase(durations)) {
+                        // No more phases, stop
+                        stopBreath();
+                        setIdleState();
+                        return;
+                    }
+                    // Count a round when we complete a full cycle (after holdOut)
+                    if (currentPhase === 'holdOut' || 
+                        (currentPhase === 'exhale' && durations.holdOut === 0)) {
+                        roundCount++;
+                        updateStats();
                     }
                     if (isRunning) {
                         startPhase(nextPhase);
@@ -703,9 +824,24 @@
         // ----- start -----
         function startBreath() {
             if (isRunning) return;
-            const d = getDurations();
-            if (d.inhale < 0.5 || d.holdIn < 0.5 || d.exhale < 0.5 || d.holdOut < 0.5) {
-                alert('Please enter values of at least 0.5 seconds.');
+            
+            const durations = getDurations();
+            
+            // Check if any phase has duration > 0
+            if (!hasAnyPhase(durations)) {
+                alert('At least one phase must have a value greater than 0.');
+                return;
+            }
+
+            // Find first valid phase
+            let firstPhase = 'idle';
+            if (durations.inhale > 0) firstPhase = 'inhale';
+            else if (durations.holdIn > 0) firstPhase = 'holdIn';
+            else if (durations.exhale > 0) firstPhase = 'exhale';
+            else if (durations.holdOut > 0) firstPhase = 'holdOut';
+            
+            if (firstPhase === 'idle') {
+                alert('At least one phase must have a value greater than 0.');
                 return;
             }
 
@@ -726,7 +862,7 @@
                 }
             }, 100);
 
-            startPhase('inhale');
+            startPhase(firstPhase);
         }
 
         // ----- reset -----
@@ -748,9 +884,11 @@
         startBtn.addEventListener('click', startBreath);
         resetBtn.addEventListener('click', resetBreath);
 
-        // init
+        // ----- init -----
+        loadConfig();
         setIdleState();
         updateStats();
+        saveIndicator.textContent = '💾 settings auto-saved';
     })();
 </script>
 </body>
