@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Breath · Circle Countdown</title>
+    <title>Breath · Circle Countdown with Sound</title>
     <style>
         * {
             margin: 0;
@@ -86,7 +86,6 @@
             position: relative;
         }
 
-        /* Dark overlay inside circle for better text contrast */
         .breath-circle::before {
             content: '';
             position: absolute;
@@ -147,16 +146,6 @@
             text-shadow: 0 2px 12px rgba(0,0,0,0.4);
         }
 
-        /* Skip phase indicator */
-        .breath-circle .skip-indicator {
-            font-size: 1rem;
-            font-weight: 500;
-            letter-spacing: 2px;
-            opacity: 0.6;
-            text-shadow: 0 2px 12px rgba(0,0,0,0.4);
-        }
-
-        /* Color classes for phases */
         .phase-inhale .seconds-display,
         .phase-inhale .phase-name {
             color: #f5e6c8;
@@ -255,7 +244,7 @@
             flex-wrap: wrap;
             justify-content: center;
             gap: 0.8rem 1.2rem;
-            margin: 1.8rem 0 1.6rem;
+            margin: 1.8rem 0 1.2rem;
             background: rgba(0, 0, 0, 0.15);
             padding: 1.2rem 1.2rem 1.6rem;
             border-radius: 60px;
@@ -320,6 +309,73 @@
             color: #a99b89;
             margin-top: 0.2rem;
             letter-spacing: 1px;
+        }
+
+        /* -------- SOUND CONTROLS -------- */
+        .sound-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.2rem;
+            margin: 0.4rem 0 1.2rem;
+            flex-wrap: wrap;
+            padding: 0.4rem 1.2rem;
+        }
+
+        .sound-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #c6b9a6;
+            letter-spacing: 1px;
+            user-select: none;
+        }
+
+        .sound-toggle input[type="checkbox"] {
+            width: 42px;
+            height: 24px;
+            appearance: none;
+            -webkit-appearance: none;
+            background: rgba(60, 50, 40, 0.5);
+            border-radius: 20px;
+            border: 1px solid rgba(200, 180, 150, 0.2);
+            position: relative;
+            cursor: pointer;
+            transition: 0.3s;
+            flex-shrink: 0;
+        }
+
+        .sound-toggle input[type="checkbox"]::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            background: #8f8474;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: 0.3s;
+        }
+
+        .sound-toggle input[type="checkbox"]:checked {
+            background: rgba(234, 207, 170, 0.3);
+            border-color: #eacfaa;
+        }
+
+        .sound-toggle input[type="checkbox"]:checked::before {
+            left: 20px;
+            background: #eacfaa;
+            box-shadow: 0 0 16px rgba(234, 207, 170, 0.3);
+        }
+
+        .sound-toggle .sound-label {
+            font-weight: 400;
+        }
+
+        .sound-toggle .sound-icon {
+            font-size: 1.2rem;
         }
 
         /* -------- BUTTONS -------- */
@@ -401,7 +457,6 @@
         .footer-note .exhale-color { color: #a8dfd8; }
         .footer-note .hold-color { color: #e8ddd0; }
 
-        /* Save indicator */
         .save-indicator {
             font-size: 0.65rem;
             color: #8f8474;
@@ -430,6 +485,7 @@
             .stat-item { min-width: 80px; padding: 0.3rem 1rem; }
             .stat-item .stat-value { font-size: 1.4rem; }
             .btn { min-width: 100px; padding: 0.6rem 1.2rem; }
+            .sound-controls { gap: 0.8rem; }
         }
 
         @media (max-width: 380px) {
@@ -468,6 +524,17 @@
         </div>
     </div>
 
+    <!-- sound controls -->
+    <div class="sound-controls">
+        <label class="sound-toggle" id="soundToggle">
+            <span class="sound-icon">🔊</span>
+            <span class="sound-label">Sound</span>
+            <input type="checkbox" id="soundCheckbox" checked>
+        </label>
+        <span style="color:#8f8474; font-size:0.7rem; opacity:0.5;">|</span>
+        <span style="color:#8f8474; font-size:0.65rem; opacity:0.6;">🌬️ whoosh · 🌀 drone</span>
+    </div>
+
     <!-- controls -->
     <div class="controls" id="controlPanel">
         <div class="control-group">
@@ -492,8 +559,7 @@
         </div>
     </div>
 
-    <!-- save indicator -->
-    <div class="save-indicator" id="saveIndicator">⚡ settings auto-saved</div>
+    <div class="save-indicator" id="saveIndicator">💾 settings auto-saved</div>
 
     <!-- buttons -->
     <div class="action-buttons">
@@ -519,6 +585,7 @@
         const roundCountEl = document.getElementById('roundCount');
         const totalTimeEl = document.getElementById('totalTime');
         const saveIndicator = document.getElementById('saveIndicator');
+        const soundCheckbox = document.getElementById('soundCheckbox');
 
         const inhaleInput = document.getElementById('inhaleInput');
         const holdInInput = document.getElementById('holdInInput');
@@ -534,6 +601,239 @@
         const MIN_SIZE = 130;
         const STORAGE_KEY = 'breath_config';
 
+        // ----- Audio Engine -----
+        let audioCtx = null;
+        let currentSound = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        class BreathSound {
+            constructor() {
+                this.oscillator = null;
+                this.gainNode = null;
+                this.noiseNode = null;
+                this.noiseGain = null;
+                this.filter = null;
+                this.isPlaying = false;
+                this.phase = 'idle';
+                this.startTime = 0;
+                this.duration = 0;
+            }
+
+            start(phase, duration) {
+                if (!soundCheckbox.checked) return;
+                if (duration <= 0) return;
+
+                try {
+                    const ctx = initAudio();
+                    this.phase = phase;
+                    this.duration = duration;
+                    this.startTime = ctx.currentTime;
+
+                    // Stop any existing sound
+                    this.stop();
+
+                    // Create gain node for overall volume
+                    this.gainNode = ctx.createGain();
+                    this.gainNode.gain.setValueAtTime(0, ctx.currentTime);
+                    this.gainNode.connect(ctx.destination);
+
+                    if (phase === 'inhale' || phase === 'exhale') {
+                        // Create noise for whoosh sound
+                        const bufferSize = ctx.sampleRate * 0.1;
+                        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+                        const data = buffer.getChannelData(0);
+                        for (let i = 0; i < bufferSize; i++) {
+                            data[i] = (Math.random() * 2 - 1) * 0.3;
+                        }
+                        this.noiseNode = ctx.createBufferSource();
+                        this.noiseNode.buffer = buffer;
+                        this.noiseNode.loop = true;
+
+                        // Filter for shaping the whoosh
+                        this.filter = ctx.createBiquadFilter();
+                        this.filter.type = 'bandpass';
+                        this.filter.Q.value = 0.8;
+                        this.filter.frequency.setValueAtTime(phase === 'inhale' ? 200 : 400, ctx.currentTime);
+
+                        // Noise gain
+                        this.noiseGain = ctx.createGain();
+                        this.noiseGain.gain.setValueAtTime(phase === 'inhale' ? 0.1 : 0.1, ctx.currentTime);
+
+                        this.noiseNode.connect(this.filter);
+                        this.filter.connect(this.noiseGain);
+                        this.noiseGain.connect(this.gainNode);
+
+                        // Add a subtle tone for pitch
+                        this.oscillator = ctx.createOscillator();
+                        this.oscillator.type = 'sine';
+                        this.oscillator.frequency.setValueAtTime(
+                            phase === 'inhale' ? 180 : 350,
+                            ctx.currentTime
+                        );
+                        const oscGain = ctx.createGain();
+                        oscGain.gain.setValueAtTime(0.15, ctx.currentTime);
+                        this.oscillator.connect(oscGain);
+                        oscGain.connect(this.gainNode);
+
+                        // Schedule envelope
+                        const now = ctx.currentTime;
+                        const rampTime = duration * 0.15;
+
+                        if (phase === 'inhale') {
+                            // Rising volume and pitch
+                            this.gainNode.gain.linearRampToValueAtTime(0.35, now + rampTime);
+                            this.gainNode.gain.linearRampToValueAtTime(0.45, now + duration * 0.5);
+                            this.gainNode.gain.linearRampToValueAtTime(0.25, now + duration);
+
+                            this.filter.frequency.linearRampToValueAtTime(350, now + duration * 0.3);
+                            this.filter.frequency.linearRampToValueAtTime(600, now + duration * 0.7);
+                            this.filter.frequency.linearRampToValueAtTime(400, now + duration);
+
+                            this.oscillator.frequency.linearRampToValueAtTime(250, now + duration * 0.3);
+                            this.oscillator.frequency.linearRampToValueAtTime(400, now + duration * 0.7);
+                            this.oscillator.frequency.linearRampToValueAtTime(300, now + duration);
+
+                            this.noiseGain.gain.linearRampToValueAtTime(0.15, now + rampTime);
+                            this.noiseGain.gain.linearRampToValueAtTime(0.25, now + duration * 0.5);
+                            this.noiseGain.gain.linearRampToValueAtTime(0.05, now + duration);
+
+                        } else { // exhale
+                            // Falling volume and pitch
+                            this.gainNode.gain.linearRampToValueAtTime(0.4, now + rampTime);
+                            this.gainNode.gain.linearRampToValueAtTime(0.2, now + duration * 0.6);
+                            this.gainNode.gain.linearRampToValueAtTime(0.02, now + duration);
+
+                            this.filter.frequency.linearRampToValueAtTime(500, now + duration * 0.2);
+                            this.filter.frequency.linearRampToValueAtTime(250, now + duration * 0.6);
+                            this.filter.frequency.linearRampToValueAtTime(120, now + duration);
+
+                            this.oscillator.frequency.linearRampToValueAtTime(400, now + duration * 0.2);
+                            this.oscillator.frequency.linearRampToValueAtTime(200, now + duration * 0.6);
+                            this.oscillator.frequency.linearRampToValueAtTime(100, now + duration);
+
+                            this.noiseGain.gain.linearRampToValueAtTime(0.2, now + rampTime);
+                            this.noiseGain.gain.linearRampToValueAtTime(0.1, now + duration * 0.6);
+                            this.noiseGain.gain.linearRampToValueAtTime(0.01, now + duration);
+                        }
+
+                        // Start noise
+                        this.noiseNode.start(now);
+                        this.noiseNode.stop(now + duration + 0.1);
+
+                        // Start oscillator
+                        this.oscillator.start(now);
+                        this.oscillator.stop(now + duration + 0.1);
+
+                        this.isPlaying = true;
+
+                    } else if (phase === 'holdIn' || phase === 'holdOut') {
+                        // Hold sound - gentle drone
+                        this.oscillator = ctx.createOscillator();
+                        this.oscillator.type = 'sine';
+                        this.oscillator.frequency.setValueAtTime(
+                            phase === 'holdIn' ? 220 : 180,
+                            ctx.currentTime
+                        );
+
+                        // Add a second oscillator for richness
+                        const osc2 = ctx.createOscillator();
+                        osc2.type = 'sine';
+                        osc2.frequency.setValueAtTime(
+                            phase === 'holdIn' ? 330 : 270,
+                            ctx.currentTime
+                        );
+                        const osc2Gain = ctx.createGain();
+                        osc2Gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                        osc2.connect(osc2Gain);
+                        osc2Gain.connect(this.gainNode);
+
+                        // Add a subtle shimmer
+                        const osc3 = ctx.createOscillator();
+                        osc3.type = 'sine';
+                        osc3.frequency.setValueAtTime(
+                            phase === 'holdIn' ? 440 : 360,
+                            ctx.currentTime
+                        );
+                        const osc3Gain = ctx.createGain();
+                        osc3Gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                        osc3.connect(osc3Gain);
+                        osc3Gain.connect(this.gainNode);
+
+                        // Main oscillator gain
+                        const mainGain = ctx.createGain();
+                        mainGain.gain.setValueAtTime(0.2, ctx.currentTime);
+                        this.oscillator.connect(mainGain);
+                        mainGain.connect(this.gainNode);
+
+                        // Envelope - slow fade in, hold, fade out
+                        const now = ctx.currentTime;
+                        const fadeIn = Math.min(0.8, duration * 0.1);
+                        const fadeOut = Math.min(0.8, duration * 0.1);
+
+                        this.gainNode.gain.setValueAtTime(0, now);
+                        this.gainNode.gain.linearRampToValueAtTime(0.25, now + fadeIn);
+                        this.gainNode.gain.linearRampToValueAtTime(0.25, now + duration - fadeOut);
+                        this.gainNode.gain.linearRampToValueAtTime(0, now + duration);
+
+                        this.oscillator.start(now);
+                        this.oscillator.stop(now + duration + 0.1);
+                        osc2.start(now);
+                        osc2.stop(now + duration + 0.1);
+                        osc3.start(now);
+                        osc3.stop(now + duration + 0.1);
+
+                        this.isPlaying = true;
+                    }
+
+                    // Auto-stop after duration
+                    setTimeout(() => {
+                        this.stop();
+                    }, duration * 1000 + 200);
+
+                } catch (e) {
+                    console.log('Audio error:', e);
+                }
+            }
+
+            stop() {
+                try {
+                    if (this.gainNode) {
+                        this.gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.05);
+                        setTimeout(() => {
+                            try {
+                                if (this.oscillator) {
+                                    this.oscillator.stop();
+                                    this.oscillator.disconnect();
+                                }
+                                if (this.noiseNode) {
+                                    this.noiseNode.stop();
+                                    this.noiseNode.disconnect();
+                                }
+                                if (this.gainNode) {
+                                    this.gainNode.disconnect();
+                                }
+                            } catch (e) {}
+                        }, 100);
+                    }
+                } catch (e) {}
+                this.isPlaying = false;
+                this.oscillator = null;
+                this.noiseNode = null;
+                this.gainNode = null;
+                this.filter = null;
+                this.noiseGain = null;
+            }
+        }
+
         // ----- state -----
         let isRunning = false;
         let timerId = null;
@@ -543,6 +843,7 @@
         let roundCount = 0;
         let totalSeconds = 0;
         let totalTimerId = null;
+        let breathSound = new BreathSound();
 
         // ----- localStorage helpers -----
         function loadConfig() {
@@ -554,6 +855,7 @@
                     if (config.holdIn !== undefined) holdInInput.value = config.holdIn;
                     if (config.exhale !== undefined) exhaleInput.value = config.exhale;
                     if (config.holdOut !== undefined) holdOutInput.value = config.holdOut;
+                    if (config.sound !== undefined) soundCheckbox.checked = config.sound;
                 }
             } catch (e) {
                 console.log('Error loading config:', e);
@@ -566,10 +868,10 @@
                     inhale: parseFloat(inhaleInput.value) || 0,
                     holdIn: parseFloat(holdInInput.value) || 0,
                     exhale: parseFloat(exhaleInput.value) || 0,
-                    holdOut: parseFloat(holdOutInput.value) || 0
+                    holdOut: parseFloat(holdOutInput.value) || 0,
+                    sound: soundCheckbox.checked
                 };
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-                // Show save indicator feedback
                 saveIndicator.classList.add('saved');
                 clearTimeout(saveIndicator._timeout);
                 saveIndicator._timeout = setTimeout(() => {
@@ -581,10 +883,9 @@
         }
 
         // Auto-save on input change
-        [inhaleInput, holdInInput, exhaleInput, holdOutInput].forEach(input => {
+        [inhaleInput, holdInInput, exhaleInput, holdOutInput, soundCheckbox].forEach(input => {
             input.addEventListener('change', saveConfig);
             input.addEventListener('input', () => {
-                // Debounced save for live updates
                 clearTimeout(input._saveTimeout);
                 input._saveTimeout = setTimeout(saveConfig, 300);
             });
@@ -600,12 +901,10 @@
             };
         }
 
-        // Get next phase, skipping zero-duration phases
         function getNextPhase(currentPhase, durations) {
             const phaseOrder = ['inhale', 'holdIn', 'exhale', 'holdOut'];
             const currentIndex = phaseOrder.indexOf(currentPhase);
             
-            // Find the next phase with duration > 0
             for (let i = 1; i <= phaseOrder.length; i++) {
                 const nextIndex = (currentIndex + i) % phaseOrder.length;
                 const phase = phaseOrder[nextIndex];
@@ -613,10 +912,9 @@
                     return phase;
                 }
             }
-            return 'idle'; // No phases with duration > 0
+            return 'idle';
         }
 
-        // Check if any phase has duration > 0
         function hasAnyPhase(durations) {
             return durations.inhale > 0 || durations.holdIn > 0 || 
                    durations.exhale > 0 || durations.holdOut > 0;
@@ -624,7 +922,6 @@
 
         // ----- update circle size & appearance -----
         function setCircleState(phase, progress, remainingSeconds, isSkip = false) {
-            // Update size
             let size, glowIntensity;
             if (phase === 'inhale') {
                 size = BASE_SIZE + (MAX_SIZE - BASE_SIZE) * progress;
@@ -659,7 +956,6 @@
             const shadow = `0 0 ${40 + 50 * glow}px ${16 + 24 * glow}px ${glowColor}${Math.min(0.7, 0.2 + 0.5 * glow)}`;
             circle.style.boxShadow = `${shadow}, 0 0 0 1px rgba(240, 220, 190, 0.2)`;
 
-            // Update content
             let icon = '⏳';
             let name = 'ready';
             let cssClass = 'phase-idle';
@@ -697,7 +993,6 @@
                 displayText = '—';
             }
 
-            // Remove all phase classes
             circle.classList.remove('phase-inhale', 'phase-hold', 'phase-exhale', 'phase-idle');
             circle.classList.add(cssClass);
 
@@ -706,7 +1001,6 @@
             secondsDisplay.textContent = displayText;
         }
 
-        // ----- reset to idle -----
         function setIdleState() {
             circle.style.width = BASE_SIZE + 'px';
             circle.style.height = BASE_SIZE + 'px';
@@ -718,7 +1012,6 @@
             secondsDisplay.textContent = '—';
         }
 
-        // ----- update stats -----
         function updateStats() {
             roundCountEl.textContent = roundCount;
             const mins = Math.floor(totalSeconds / 60);
@@ -726,7 +1019,6 @@
             totalTimeEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
         }
 
-        // ----- stop -----
         function stopBreath() {
             if (timerId) {
                 clearInterval(timerId);
@@ -736,6 +1028,7 @@
                 clearInterval(totalTimerId);
                 totalTimerId = null;
             }
+            breathSound.stop();
             isRunning = false;
             currentPhase = 'idle';
             startBtn.textContent = '▶ start';
@@ -743,23 +1036,20 @@
             document.querySelectorAll('.controls input').forEach(inp => inp.disabled = false);
         }
 
-        // ----- start phase -----
         function startPhase(phase) {
             if (!isRunning) return;
             
             const durations = getDurations();
             
-            // If phase duration is 0, skip to next valid phase
             if (durations[phase] === 0) {
                 const nextPhase = getNextPhase(phase, durations);
                 if (nextPhase === 'idle' || !hasAnyPhase(durations)) {
-                    // No more phases, stop or idle
                     if (timerId) {
                         clearInterval(timerId);
                         timerId = null;
                     }
-                    // Show skip message briefly then idle
                     setCircleState(phase, 0, 0, true);
+                    breathSound.stop();
                     setTimeout(() => {
                         if (!isRunning) return;
                         setIdleState();
@@ -767,8 +1057,8 @@
                     }, 800);
                     return;
                 }
-                // Show skip indicator briefly then move to next phase
                 setCircleState(phase, 0, 0, true);
+                breathSound.stop();
                 setTimeout(() => {
                     if (isRunning) {
                         startPhase(nextPhase);
@@ -780,6 +1070,10 @@
             currentPhase = phase;
             currentPhaseDuration = durations[phase];
             phaseStartTime = performance.now() / 1000;
+
+            // Start sound
+            breathSound.stop();
+            breathSound.start(phase, currentPhaseDuration);
 
             if (timerId) {
                 clearInterval(timerId);
@@ -796,19 +1090,17 @@
                 setCircleState(currentPhase, progress, remaining);
 
                 if (progress >= 1) {
-                    // Phase complete, find next valid phase
                     const nextPhase = getNextPhase(currentPhase, durations);
                     if (timerId) {
                         clearInterval(timerId);
                         timerId = null;
                     }
                     if (nextPhase === 'idle' || !hasAnyPhase(durations)) {
-                        // No more phases, stop
+                        breathSound.stop();
                         stopBreath();
                         setIdleState();
                         return;
                     }
-                    // Count a round when we complete a full cycle (after holdOut)
                     if (currentPhase === 'holdOut' || 
                         (currentPhase === 'exhale' && durations.holdOut === 0)) {
                         roundCount++;
@@ -821,19 +1113,16 @@
             }, 30);
         }
 
-        // ----- start -----
         function startBreath() {
             if (isRunning) return;
             
             const durations = getDurations();
             
-            // Check if any phase has duration > 0
             if (!hasAnyPhase(durations)) {
                 alert('At least one phase must have a value greater than 0.');
                 return;
             }
 
-            // Find first valid phase
             let firstPhase = 'idle';
             if (durations.inhale > 0) firstPhase = 'inhale';
             else if (durations.holdIn > 0) firstPhase = 'holdIn';
@@ -844,6 +1133,9 @@
                 alert('At least one phase must have a value greater than 0.');
                 return;
             }
+
+            // Initialize audio context on user gesture
+            initAudio();
 
             roundCount = 0;
             totalSeconds = 0;
@@ -865,9 +1157,9 @@
             startPhase(firstPhase);
         }
 
-        // ----- reset -----
         function resetBreath() {
             stopBreath();
+            breathSound.stop();
             setIdleState();
             document.querySelectorAll('.controls input').forEach(inp => inp.disabled = false);
             startBtn.textContent = '▶ start';
