@@ -76,7 +76,26 @@
     background: rgba(236, 72, 153, 0.3);
     color: #f9a8d4;
 }
+/* Round mode indicator (for 'both' mode) */
+.round-mode-indicator {
+    font-weight: 600;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+    animation: pulse-glow 1.5s ease-in-out infinite;
+}
 
+@keyframes pulse-glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; transform: scale(0.95); }
+}
+
+/* Also make sequence items show their colour when active */
+.sequence-item.active {
+    /* The colour is applied inline via :style */
+    text-shadow: 0 0 20px currentColor;
+}
 .sequence-container {
     display: flex;
     flex: 1;
