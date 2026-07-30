@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Colour Word Game</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white min-h-screen">
+
+<div id="app" class="container mx-auto px-4 py-6 max-w-6xl">
+    
+    <!-- ===== HEADER ===== -->
+    <header class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            🎨 Colour Word Game
+        </h1>
+        <div class="flex gap-3">
+            <button @click="toggleSettings" class="btn-secondary text-sm">
+                ⚙️ Settings
+            </button>
+            <button @click="toggleHistory" class="btn-secondary text-sm">
+                📊 History
+            </button>
+        </div>
+    </header>
+
+    <!-- ===== STATS SUMMARY ===== -->
+    <section class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-label">⏱ Total Time</div>
+            <div class="stat-value">{{ formatTime(totalTime) }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">🔄 Last Round</div>
+            <div class="stat-value">{{ formatTime(lastRoundTime) }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">❌ Errors</div>
+            <div class="stat-value">{{ errorCount }}</div>
+        </div>
+    </section>
+
+    <!-- ===== GAME HINTS ===== -->
+    <section class="game-hints">
+        <div class="hints-content">
+            <!-- Mode Badge -->
+            <div class="mode-badge">
+                <span class="hints-label">Mode:</span>
+                <span class="mode-indicator" :class="mode === 'word' ? 'mode-word' : 'mode-colour'">
+                    {{ mode === 'word' ? '📝 Word' : '🎨 Colour' }}
+                </span>
+            </div>
+
+            <!-- Sequence -->
+            <div class="sequence-container">
+                <span class="hints-label">Sequence:</span>
+                <div class="sequence-items">
+                    <span v-for="(item, idx) in sequence" :key="idx"
+                          class="sequence-item"
+                          :class="getSequenceClass(idx)">
+                        {{ item }}
+                    </span>
+                </div>
+                <span v-if="gameOver" class="sequence-complete">✅ Complete!</span>
+                <span v-else-if="!gameStarted" class="sequence-hint">Click a card to start</span>
+            </div>
+
+            <!-- Round Info -->
+            <div class="round-info">
+                Round {{ currentRound }} / {{ totalRounds }}
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== MAIN GRID ===== -->
+    <section class="grid-container">
+        <div class="game-grid" 
+             :style="gridStyle">
+            <div v-for="(card, idx) in grid" :key="idx"
+                 class="card"
+                 :class="getCardClass(idx)"
+                 :style="getCardStyle(card)"
+                 @click="handleCardClick(idx)">
+                <span class="word-text">{{ card.word }}</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== CONTROLS ===== -->
+    <div class="controls">
+        <button @click="resetGame" class="btn-primary">
+            🔄 New Game
+        </button>
+        <button v-if="gameOver" @click="nextRound" class="btn-success">
+            ➡️ Next Round
+        </button>
+    </div>
+
+    <!-- ===== SETTINGS MODAL ===== -->
+    <div v-if="showSettings" class="modal-overlay" @click.self="closeSettings">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">⚙️ Settings</h2>
+                <button @click="closeSettings" class="modal-close">✕</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Mode Selection -->
+                <div class="setting-group">
+                    <label class="setting-label">Game Mode</label>
+                    <select v-model="settings.mode" class="setting-input">
+                        <option value="word">Word Mode (match the word)</option>
+                        <option value="colour">Colour Mode (match the colour)</option>
+                    </select>
+                </div>
+
+                <!-- Colour Selection -->
+                <div class="setting-group">
+                    <label class="setting-label">Colours (click to toggle)</label>
+                    <div class="colour-picker">
+                        <div v-for="color in availableColours" :key="color.name"
+                             class="colour-swatch"
+                             :style="{ backgroundColor: color.hex }"
+                             :class="{ 'colour-active': isColourSelected(color.name), 'colour-inactive': !isColourSelected(color.name) }"
+                             @click="toggleColour(color.name)">
+                        </div>
+                    </div>
+                    <div class="setting-hint">Select at least 2 colours</div>
+                </div>
+
+                <!-- Grid Size -->
+                <div class="setting-row">
+                    <div class="setting-group">
+                        <label class="setting-label">Rows (M)</label>
+                        <input type="number" v-model.number="settings.rows" min="2" max="6" class="setting-input">
+                    </div>
+                    <div class="setting-group">
+                        <label class="setting-label">Columns (N)</label>
+                        <input type="number" v-model.number="settings.cols" min="2" max="6" class="setting-input">
+                    </div>
+                </div>
+
+                <!-- Rounds -->
+                <div class="setting-group">
+                    <label class="setting-label">Total Rounds</label>
+                    <input type="number" v-model.number="settings.totalRounds" min="1" max="20" class="setting-input">
+                </div>
+
+                <button @click="saveSettings" class="btn-primary btn-full">
+                    💾 Save Settings & Restart
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== HISTORY MODAL ===== -->
+    <div v-if="showHistory" class="modal-overlay" @click.self="closeHistory">
+        <div class="modal-content modal-wide">
+            <div class="modal-header">
+                <h2 class="modal-title">📊 Score History</h2>
+                <button @click="closeHistory" class="modal-close">✕</button>
+            </div>
+            
+            <div class="modal-body history-body">
+                <div v-if="history.length === 0" class="history-empty">
+                    No history yet. Play a game to see records!
+                </div>
+                <div v-for="(entry, idx) in history" :key="idx" class="history-item">
+                    <div class="history-info">
+                        <div class="history-mode">{{ entry.mode }} mode</div>
+                        <div class="history-date">{{ entry.date }}</div>
+                    </div>
+                    <div class="history-stats">
+                        <div>⏱ {{ formatTime(entry.totalTime) }}</div>
+                        <div>❌ {{ entry.errors }} errors</div>
+                        <div class="history-grid">{{ entry.rows }}×{{ entry.cols }} • {{ entry.rounds }} rounds</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button v-if="history.length > 0" @click="clearHistory" class="btn-danger">
+                    🗑️ Clear History
+                </button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Vue 3 -->
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<!-- Game Logic -->
+<script src="app.js"></script>
+
+</body>
+</html>
