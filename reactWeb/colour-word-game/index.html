@@ -54,6 +54,12 @@
                 <span class="mode-indicator" :class="modeClass">
                     {{ modeLabel }}
                 </span>
+                <!-- Show current round mode when in 'both' -->
+                <span v-if="mode === 'both' && gameStarted" 
+                      class="mode-indicator ml-2" 
+                      :class="roundModeClass">
+                    {{ roundModeLabel }}
+                </span>
             </div>
 
             <!-- Sequence -->
@@ -62,7 +68,8 @@
                 <div class="sequence-items">
                     <span v-for="(item, idx) in sequence" :key="idx"
                           class="sequence-item"
-                          :class="getSequenceClass(idx)">
+                          :class="getSequenceClass(idx)"
+                          :style="idx === currentSequenceIndex && !gameOver ? 'color: ' + getSequenceColour(item) + ';' : ''">
                         {{ item }}
                     </span>
                 </div>
