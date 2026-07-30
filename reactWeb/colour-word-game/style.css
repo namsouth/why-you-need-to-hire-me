@@ -621,3 +621,192 @@
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
 }
+
+/* ========================================
+   SEQUENCE DISPLAY - New Styles
+   ======================================== */
+
+.sequence-display {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    flex-wrap: wrap;
+    min-width: 200px;
+}
+
+.sequence-target {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.sequence-label {
+    font-size: 1.1rem;
+    opacity: 0.7;
+}
+
+.sequence-current {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 30px currentColor, 0 0 60px currentColor;
+    animation: pulse-glow 1.2s ease-in-out infinite;
+    transition: all 0.3s;
+    min-width: 50px;
+    text-align: center;
+}
+
+@keyframes pulse-glow {
+    0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.8;
+        transform: scale(1.05);
+    }
+}
+
+.sequence-arrow {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.3);
+    font-weight: 300;
+    margin: 0 0.1rem;
+}
+
+.sequence-next {
+    font-size: 1.1rem;
+    font-weight: 500;
+    opacity: 0.5;
+    letter-spacing: 0.3px;
+    transition: all 0.3s;
+    min-width: 40px;
+    text-align: center;
+}
+
+.sequence-done {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #4ade80;
+    animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+.sequence-placeholder {
+    font-size: 1.2rem;
+    color: rgba(255, 255, 255, 0.2);
+    min-width: 30px;
+    text-align: center;
+}
+
+.sequence-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 120px;
+}
+
+.progress-text {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #94a3b8;
+    white-space: nowrap;
+    min-width: 50px;
+}
+
+.progress-bar-container {
+    flex: 1;
+    min-width: 60px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #6366f1);
+    border-radius: 10px;
+    transition: width 0.4s ease;
+    position: relative;
+}
+
+.progress-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .sequence-display {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+        width: 100%;
+    }
+    
+    .sequence-target {
+        justify-content: center;
+        padding: 0.35rem 0.75rem;
+    }
+    
+    .sequence-current {
+        font-size: 1.3rem;
+        min-width: 40px;
+    }
+    
+    .sequence-next {
+        font-size: 1rem;
+        min-width: 30px;
+    }
+    
+    .sequence-progress {
+        min-width: 100px;
+    }
+    
+    .progress-text {
+        font-size: 0.75rem;
+        min-width: 40px;
+    }
+    
+    .progress-bar-container {
+        min-width: 40px;
+    }
+}
+
+@media (max-width: 480px) {
+    .sequence-current {
+        font-size: 1.1rem;
+        min-width: 30px;
+    }
+    
+    .sequence-next {
+        font-size: 0.85rem;
+        min-width: 25px;
+    }
+    
+    .sequence-arrow {
+        font-size: 0.9rem;
+    }
+    
+    .sequence-label {
+        font-size: 0.9rem;
+    }
+}
