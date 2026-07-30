@@ -51,8 +51,8 @@
             <!-- Mode Badge -->
             <div class="mode-badge">
                 <span class="hints-label">Mode:</span>
-                <span class="mode-indicator" :class="mode === 'word' ? 'mode-word' : 'mode-colour'">
-                    {{ mode === 'word' ? '📝 Word' : '🎨 Colour' }}
+                <span class="mode-indicator" :class="modeClass">
+                    {{ modeLabel }}
                 </span>
             </div>
 
@@ -67,7 +67,7 @@
                     </span>
                 </div>
                 <span v-if="gameOver" class="sequence-complete">✅ Complete!</span>
-                <span v-else-if="!gameStarted" class="sequence-hint">Click a card to start</span>
+                <span v-else-if="!gameStarted" class="sequence-hint">Click "Play" to start</span>
             </div>
 
             <!-- Round Info -->
@@ -77,8 +77,9 @@
         </div>
     </section>
 
-    <!-- ===== MAIN GRID ===== -->
+    <!-- ===== MAIN GRID (with overlays) ===== -->
     <section class="grid-container">
+        <!-- The actual grid -->
         <div class="game-grid" 
              :style="gridStyle">
             <div v-for="(card, idx) in grid" :key="idx"
@@ -89,15 +90,59 @@
                 <span class="word-text">{{ card.word }}</span>
             </div>
         </div>
+
+        <!-- START / ROUND START MODAL (overlay) -->
+        <div v-if="showStartModal" class="grid-overlay">
+            <div class="overlay-content">
+                <!-- Play button before countdown -->
+                <div v-if="!isCountingDown" class="text-center">
+                    <h2 class="text-3xl font-bold mb-4">
+                        {{ currentRound === 0 ? '🎮 New Game' : `Round ${currentRound + 1}` }}
+                    </h2>
+                    <p class="text-slate-300 mb-6">Get ready to match!</p>
+                    <button @click="startCountdown" class="btn-primary text-xl px-8 py-3">
+                        ▶️ Play
+                    </button>
+                </div>
+                <!-- Countdown number -->
+                <div v-else class="countdown-number">
+                    {{ countdownValue }}
+                </div>
+            </div>
+        </div>
+
+        <!-- ROUND SUMMARY MODAL -->
+        <div v-if="showRoundSummary" class="grid-overlay">
+            <div class="overlay-content summary-content">
+                <div class="text-center">
+                    <h2 class="text-3xl font-bold text-green-400 mb-2">🎉 Round Complete!</h2>
+                    <div class="summary-stats">
+                        <div class="summary-item">
+                            <span class="summary-label">⏱ Time</span>
+                            <span class="summary-value">{{ formatTime(roundSummary.time) }}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">❌ Errors</span>
+                            <span class="summary-value">{{ roundSummary.errors }}</span>
+                        </div>
+                    </div>
+                    <button v-if="currentRound < totalRounds" @click="nextRound" 
+                            class="btn-success text-xl px-8 py-3 mt-4">
+                        ➡️ Next Round
+                    </button>
+                    <button v-else @click="finishGame" 
+                            class="btn-primary text-xl px-8 py-3 mt-4">
+                        🏁 Finish Game
+                    </button>
+                </div>
+            </div>
+        </div>
     </section>
 
     <!-- ===== CONTROLS ===== -->
     <div class="controls">
         <button @click="resetGame" class="btn-primary">
             🔄 New Game
-        </button>
-        <button v-if="gameOver" @click="nextRound" class="btn-success">
-            ➡️ Next Round
         </button>
     </div>
 
@@ -115,7 +160,8 @@
                     <label class="setting-label">Game Mode</label>
                     <select v-model="settings.mode" class="setting-input">
                         <option value="word">Word Mode (match the word)</option>
-                        <option value="colour">Colour Mode (match the colour)</option>
+                        <option value="colour">Colour Mode (match the background)</option>
+                        <option value="both">Both (random each round)</option>
                     </select>
                 </div>
 
