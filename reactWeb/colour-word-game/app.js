@@ -92,7 +92,7 @@ async function loadFromDB(storeName, key = null) {
 // VUE APP
 // ========================================
 
-const { createApp, ref, computed, watch, onMounted } = Vue;
+const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
 
 const app = createApp({
     setup() {
@@ -117,12 +117,36 @@ const app = createApp({
         const roundStartTime = ref(null);
         const totalStartTime = ref(null);
 
+        // Modal / Countdown
+        const showStartModal = ref(false);
+        const isCountingDown = ref(false);
+        const countdownValue = ref(3);
+        const showRoundSummary = ref(false);
+        const roundSummary = ref({ time: 0, errors: 0 });
+
+        // Current round matching mode (for 'both' setting)
+        const currentRoundMode = ref('word');
+
         // ----- Computed Properties -----
         const mode = computed(() => settings.value.mode);
         const rows = computed(() => settings.value.rows);
         const cols = computed(() => settings.value.cols);
         const totalRounds = computed(() => settings.value.totalRounds);
         const activeColours = computed(() => settings.value.colours);
+
+        const modeLabel = computed(() => {
+            const m = mode.value;
+            if (m === 'word') return '📝 Word';
+            if (m === 'colour') return '🎨 Colour';
+            return '🔀 Both';
+        });
+
+        const modeClass = computed(() => {
+            const m = mode.value;
+            if (m === 'word') return 'mode-word';
+            if (m === 'colour') return 'mode-colour';
+            return 'mode-both';
+        });
 
         const gridStyle = computed(() => ({
             gridTemplateColumns: `repeat(${cols.value}, 1fr)`,
@@ -137,6 +161,12 @@ const app = createApp({
 
         function getRandomColourName() {
             const colours = activeColours.value;
+            return colours[Math.floor(Math.random() * colours.length)];
+        }
+
+        function getDifferentColourName(exclude) {
+            const colours = activeColours.value.filter(c => c !== exclude);
+            if (colours.length === 0) return exclude; // fallback (should not happen)
             return colours[Math.floor(Math.random() * colours.length)];
         }
 
@@ -172,6 +202,7 @@ const app = createApp({
             if (gameOver.value || !gameStarted.value || currentSequenceIndex.value >= sequence.value.length) {
                 classes.push('disabled');
             }
+            if (card.matched) classes.push('matched');
             if (card.flashCorrect) classes.push('correct');
             if (card.flashWrong) classes.push('wrong');
             return classes.join(' ');
@@ -180,7 +211,7 @@ const app = createApp({
         function getCardStyle(card) {
             return {
                 backgroundColor: card.bgColor,
-                color: card.textColor,
+                color: card.textColor, // text is always white via CSS, but we keep for consistency
             };
         }
 
@@ -206,16 +237,21 @@ const app = createApp({
             const total = rows.value * cols.value;
             const newGrid = [];
             for (let i = 0; i < total; i++) {
+                // Pick background colour
                 const bgColour = getRandomColourName();
-                const wordColour = getRandomColourName();
+                // Pick a different colour for the word (to avoid matching)
+                let wordColour = getDifferentColourName(bgColour);
+                // In case there is only one colour (should not happen), fallback
+                if (!wordColour) wordColour = bgColour;
                 newGrid.push({
                     bgColor: getColourHex(bgColour),
-                    textColor: getColourHex(wordColour),
+                    textColor: '#ffffff', // always white
                     word: wordColour,
                     bgName: bgColour,
                     wordName: wordColour,
                     flashCorrect: false,
                     flashWrong: false,
+                    matched: false,
                 });
             }
             return newGrid;
@@ -234,48 +270,106 @@ const app = createApp({
             totalStartTime.value = null;
             currentRound.value = 0;
             clearCardFlashes();
+            // Reset modals
+            showStartModal.value = false;
+            showRoundSummary.value = false;
+            isCountingDown.value = false;
+            // Determine initial round mode (for 'both' setting)
+            determineRoundMode();
         }
 
-        function startGame() {
-            if (gameStarted.value) return;
+        function determineRoundMode() {
+            if (mode.value === 'both') {
+                currentRoundMode.value = Math.random() < 0.5 ? 'word' : 'colour';
+            } else {
+                currentRoundMode.value = mode.value;
+            }
+        }
+
+        // ----- Countdown & Round Start -----
+        function startCountdown() {
+            isCountingDown.value = true;
+            countdownValue.value = 3;
+            // Play the countdown
+            const interval = setInterval(() => {
+                countdownValue.value -= 1;
+                if (countdownValue.value === 0) {
+                    clearInterval(interval);
+                    // Start the round
+                    isCountingDown.value = false;
+                    showStartModal.value = false;
+                    beginRound();
+                }
+            }, 700); // 700ms per count for a nice pace
+        }
+
+        function beginRound() {
+            // Reset grid for new round: unmatch all, clear flashes
+            grid.value.forEach(c => { c.matched = false; c.flashCorrect = false; c.flashWrong = false; });
+            currentSequenceIndex.value = 0;
+            gameOver.value = false;
             gameStarted.value = true;
+            // Start timing
             roundStartTime.value = Date.now();
             if (!totalStartTime.value) {
                 totalStartTime.value = Date.now();
             }
         }
 
+        function showRoundStartModal() {
+            showStartModal.value = true;
+            isCountingDown.value = false;
+            // Reset countdown value
+            countdownValue.value = 3;
+        }
+
+        // ----- Card Click -----
         function handleCardClick(index) {
-            // Validation
-            if (gameOver.value || !gameStarted.value || currentSequenceIndex.value >= sequence.value.length) {
-                if (!gameStarted.value) startGame();
+            // Check if game is active
+            if (!gameStarted.value || gameOver.value || currentSequenceIndex.value >= sequence.value.length) {
                 return;
             }
 
             const card = grid.value[index];
+            // If card already matched, ignore
+            if (card.matched) return;
+
             const target = sequence.value[currentSequenceIndex.value];
             let isCorrect = false;
 
-            // Check match based on mode
-            if (mode.value === 'word') {
+            // Use currentRoundMode for matching
+            if (currentRoundMode.value === 'word') {
                 isCorrect = card.wordName === target;
-            } else {
+            } else { // colour
                 isCorrect = card.bgName === target;
             }
 
             if (isCorrect) {
-                // Correct click
+                // Mark card as matched (dim and unclickable)
+                card.matched = true;
                 card.flashCorrect = true;
                 setTimeout(() => { card.flashCorrect = false; }, 300);
                 currentSequenceIndex.value++;
 
                 // Check round completion
                 if (currentSequenceIndex.value >= sequence.value.length) {
+                    // Round complete
                     const now = Date.now();
                     lastRoundTime.value = (now - roundStartTime.value) / 1000;
                     totalTime.value = (now - totalStartTime.value) / 1000;
                     gameOver.value = true;
+                    gameStarted.value = false;
                     currentRound.value++;
+                    // Show round summary
+                    roundSummary.value = {
+                        time: lastRoundTime.value,
+                        errors: errorCount.value,
+                    };
+                    showRoundSummary.value = true;
+                    // Save history only after all rounds, but we can save per round? 
+                    // We'll save at the end of each round or when game finishes.
+                    // We'll save after each round completion (or after all rounds).
+                    // For simplicity, save after each round.
                     saveRoundHistory();
                 }
             } else {
@@ -287,6 +381,9 @@ const app = createApp({
         }
 
         function saveRoundHistory() {
+            // We'll store an entry per round, but we can aggregate at the end.
+            // For now, we keep history as list of round summaries.
+            // But the user might expect a summary per game. Let's store per round for now.
             const entry = {
                 mode: mode.value,
                 rows: rows.value,
@@ -296,27 +393,40 @@ const app = createApp({
                 errors: errorCount.value,
                 date: new Date().toLocaleString(),
             };
+            // Replace last entry if same round? We'll push new one.
             history.value.unshift(entry);
             saveToDB('history', history.value);
         }
 
+        // ----- Next Round / Finish -----
         function nextRound() {
+            showRoundSummary.value = false;
             if (currentRound.value < totalRounds.value) {
-                // Start next round
+                // Determine mode for the new round (if 'both')
+                determineRoundMode();
+                // Generate new sequence and grid
                 sequence.value = generateSequence();
                 grid.value = generateGrid();
+                // Reset card states
+                grid.value.forEach(c => { c.matched = false; c.flashCorrect = false; c.flashWrong = false; });
                 currentSequenceIndex.value = 0;
                 gameOver.value = false;
                 gameStarted.value = false;
-                roundStartTime.value = null;
-                clearCardFlashes();
+                // Show start modal for next round
+                showRoundStartModal();
             } else {
-                // All rounds complete
-                alert(`🎉 Game Complete!\nTotal Time: ${formatTime(totalTime.value)}\nTotal Errors: ${errorCount.value}`);
-                resetGame();
+                // All rounds completed
+                finishGame();
             }
         }
 
+        function finishGame() {
+            showRoundSummary.value = false;
+            alert(`🎉 Game Complete!\nTotal Time: ${formatTime(totalTime.value)}\nTotal Errors: ${errorCount.value}`);
+            resetGame();
+        }
+
+        // ----- Reset -----
         function resetGame() {
             totalStartTime.value = null;
             currentRound.value = 0;
@@ -324,6 +434,8 @@ const app = createApp({
             totalTime.value = 0;
             lastRoundTime.value = 0;
             errorCount.value = 0;
+            // Show start modal for new game
+            showRoundStartModal();
         }
 
         // ----- Settings -----
@@ -403,14 +515,20 @@ const app = createApp({
             await loadSettings();
             await loadHistory();
             initGame();
+            // Show start modal after mount
+            nextTick(() => {
+                showRoundStartModal();
+            });
         });
 
-        // Watch settings changes
+        // Watch settings changes - reset if needed
         watch([rows, cols, activeColours], () => {
-            if (gameStarted.value || gameOver.value) {
+            if (gameStarted.value || gameOver.value || showStartModal.value) {
+                // Reset game with new settings
                 resetGame();
             } else {
                 initGame();
+                showRoundStartModal();
             }
         });
 
@@ -432,8 +550,17 @@ const app = createApp({
             errorCount,
             availableColours: AVAILABLE_COLOURS,
             
+            // Modal / Countdown
+            showStartModal,
+            isCountingDown,
+            countdownValue,
+            showRoundSummary,
+            roundSummary,
+            
             // Computed
             mode,
+            modeLabel,
+            modeClass,
             rows,
             cols,
             totalRounds,
@@ -448,7 +575,9 @@ const app = createApp({
             getCardStyle,
             handleCardClick,
             resetGame,
+            startCountdown,
             nextRound,
+            finishGame,
             toggleSettings,
             closeSettings,
             toggleHistory,
