@@ -9,14 +9,13 @@ export default defineComponent({
         roundModeLabel: String,
         roundModeClass: String,
         gameStarted: Boolean,
-        currentItem: String,
-        nextItem: String,
+        currentItem: Object,   // { label, color }
+        nextItem: Object,      // { label, color }
         isGameComplete: Boolean,
         progressText: String,
         progressPercent: Number,
         currentRound: Number,
         totalRounds: Number,
-        getColourHex: Function,
     },
     template: `
         <div class="game-hints">
@@ -27,7 +26,7 @@ export default defineComponent({
                     <span class="mode-indicator" :class="modeClass">
                         {{ modeLabel }}
                     </span>
-                    <span v-if="mode === 'both' && gameStarted" 
+                    <span v-if="mode === 'mix' && gameStarted" 
                           class="mode-indicator ml-2" 
                           :class="roundModeClass">
                         {{ roundModeLabel }}
@@ -40,8 +39,8 @@ export default defineComponent({
                         <span class="sequence-label">🎯</span>
                         <span v-if="currentItem && !isGameComplete" 
                               class="sequence-current"
-                              :style="{ color: getColourHex(currentItem) }">
-                            {{ currentItem }}
+                              :style="currentItem.color ? { color: currentItem.color } : {}">
+                            {{ currentItem.label }}
                         </span>
                         <span v-else-if="isGameComplete" class="sequence-done">
                             ✅ Complete!
@@ -51,8 +50,8 @@ export default defineComponent({
                         <span v-if="nextItem && !isGameComplete" class="sequence-arrow">→</span>
                         <span v-if="nextItem && !isGameComplete" 
                               class="sequence-next"
-                              :style="{ color: getColourHex(nextItem) }">
-                            {{ nextItem }}
+                              :style="nextItem.color ? { color: nextItem.color } : {}">
+                            {{ nextItem.label }}
                         </span>
                     </div>
 
