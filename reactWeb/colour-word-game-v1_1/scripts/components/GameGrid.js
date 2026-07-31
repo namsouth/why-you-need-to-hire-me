@@ -21,7 +21,10 @@ export default defineComponent({
                      :class="getCardClass(idx)"
                      :style="getCardStyle(card)"
                      @click="$emit('card-click', idx)">
-                    <span class="word-text">{{ card.word }}</span>
+                    <span class="word-text">
+                        <i v-if="card.icon" class="fa-solid" :class="card.icon" style="font-size:3em"></i>
+                        <span v-else>{{ card.word }}</span>
+                    </span>
                 </div>
             </div>
             <!-- Overlays are now separate components, rendered outside -->
