@@ -1,4 +1,4 @@
-import { createApp, ref, computed, onMounted, nextTick } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
+import { createApp, ref, computed, onMounted, nextTick, watch } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
 
 // Import modules
 import { AVAILABLE_COLOURS, DEFAULT_SETTINGS, STORAGE_KEYS } from './config.js';
@@ -24,106 +24,104 @@ const app = createApp({
         RoundSummary,
         Controls,
         SettingsModal,
-        HistoryModal
+        HistoryModal,
     },
     template: `
         <!-- HEADER -->
-            <header class="flex justify-between items-center mb-6">
-                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                    🎨 Colour Word Game
-                </h1>
-                <div class="flex gap-3">
-                    <button @click="toggleSettings" class="btn-secondary text-sm">
-                        ⚙️ Settings
-                    </button>
-                    <button @click="toggleHistory" class="btn-secondary text-sm">
-                        📊 History
-                    </button>
-                </div>
-            </header>
+        <header class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                🎨 Colour Word Game
+            </h1>
+            <div class="flex gap-3">
+                <button @click="toggleSettings" class="btn-secondary text-sm">
+                    ⚙️ Settings
+                </button>
+                <button @click="toggleHistory" class="btn-secondary text-sm">
+                    📊 History
+                </button>
+            </div>
+        </header>
 
-            <!-- STATS -->
-            <stats-bar 
-                :total-time="totalTime"
-                :last-round-time="lastRoundTime"
-                :error-count="errorCount"
+        <!-- STATS -->
+        <stats-bar 
+            :total-time="totalTime"
+            :last-round-time="lastRoundTime"
+            :error-count="errorCount"
+        />
+
+        <!-- GAME HINTS -->
+        <game-hints
+            :mode="mode"
+            :mode-label="modeLabel"
+            :mode-class="modeClass"
+            :round-mode-label="roundModeLabel"
+            :round-mode-class="roundModeClass"
+            :game-started="gameStarted"
+            :current-item="currentItem"
+            :next-item="nextItem"
+            :is-game-complete="isGameComplete"
+            :progress-text="progressText"
+            :progress-percent="progressPercent"
+            :current-round="currentRound"
+            :total-rounds="totalRounds"
+        />
+
+        <!-- GRID + OVERLAYS -->
+        <game-grid
+            :grid="grid"
+            :game-started="gameStarted"
+            :game-over="gameOver"
+            :current-sequence-index="currentSequenceIndex"
+            :sequence="sequence"
+            :grid-style="gridStyle"
+            :get-card-class="getCardClass"
+            :get-card-style="getCardStyle"
+            @card-click="handleCardClick"
+        >	
+            <!-- Overlays -->
+            <start-modal
+                :show="showStartModal"
+                :is-counting-down="isCountingDown"
+                :countdown-value="countdownValue"
+                :current-round="currentRound"
+                @start-countdown="startCountdown"
             />
-
-            <!-- GAME HINTS -->
-            <game-hints
-                :mode="mode"
-                :mode-label="modeLabel"
-                :mode-class="modeClass"
-                :round-mode-label="roundModeLabel"
-                :round-mode-class="roundModeClass"
-                :game-started="gameStarted"
-                :current-item="currentItem"
-                :next-item="nextItem"
-                :is-game-complete="isGameComplete"
-                :progress-text="progressText"
-                :progress-percent="progressPercent"
+            <round-summary
+                :show="showRoundSummary"
+                :round-summary="roundSummary"
                 :current-round="currentRound"
                 :total-rounds="totalRounds"
-                :get-colour-hex="getColourHex"
+                @next-round="nextRound"
+                @finish-game="finishGame"
             />
+        </game-grid>
 
-            <!-- GRID + OVERLAYS -->
-            <game-grid
-                :grid="grid"
-                :game-started="gameStarted"
-                :game-over="gameOver"
-                :current-sequence-index="currentSequenceIndex"
-                :sequence="sequence"
-                :grid-style="gridStyle"
-                :get-card-class="getCardClass"
-                :get-card-style="getCardStyle"
-                @card-click="handleCardClick"
-            >
-                <!-- Overlays placed inside the grid component's slot -->
-                <start-modal
-                    :show="showStartModal"
-                    :is-counting-down="isCountingDown"
-                    :countdown-value="countdownValue"
-                    :current-round="currentRound"
-                    @start-countdown="startCountdown"
-                />
-                <round-summary
-                    :show="showRoundSummary"
-                    :round-summary="roundSummary"
-                    :current-round="currentRound"
-                    :total-rounds="totalRounds"
-                    @next-round="nextRound"
-                    @finish-game="finishGame"
-                />
-            </game-grid>
+        <!-- CONTROLS -->
+        <controls @reset-game="resetGame" />
 
-            <!-- CONTROLS -->
-            <controls @reset-game="resetGame" />
+        <!-- SETTINGS MODAL -->
+        <settings-modal
+            :show="showSettings"
+            :settings="settings"
+            @close="closeSettings"
+            @save="saveSettings"
+            @toggle-colour="toggleColour"
+        />
 
-            <!-- SETTINGS MODAL -->
-            <settings-modal
-                :show="showSettings"
-                :settings="settings"
-                @close="closeSettings"
-                @save="saveSettings"
-                @toggle-colour="toggleColour"
-            />
-
-            <!-- HISTORY MODAL -->
-            <history-modal
-                :show="showHistory"
-                :history="history"
-                @close="closeHistory"
-                @clear-history="clearHistory"
-            />
+        <!-- HISTORY MODAL -->
+        <history-modal
+            :show="showHistory"
+            :history="history"
+            @close="closeHistory"
+            @clear-history="clearHistory"
+        />
     `,
     setup() {
-        // ----- Reactive state (same as before) -----
+        // ----- Reactive state -----
         const settings = ref({ ...DEFAULT_SETTINGS });
         const showSettings = ref(false);
         const showHistory = ref(false);
         const history = ref([]);
-        const saveStatus = ref('');
         const isLoading = ref(true);
         const isInitialLoad = ref(true);
 
@@ -146,9 +144,9 @@ const app = createApp({
         const showRoundSummary = ref(false);
         const roundSummary = ref({ time: 0, errors: 0 });
 
-        const currentRoundMode = ref('word');
+        const currentRoundMode = ref('word'); // actual mode for this round
 
-        // ----- Computed (same as before) -----
+        // ----- Computed (mode labels) -----
         const mode = computed(() => settings.value.mode);
         const rows = computed(() => settings.value.rows);
         const cols = computed(() => settings.value.cols);
@@ -157,26 +155,46 @@ const app = createApp({
 
         const modeLabel = computed(() => {
             const m = mode.value;
-            if (m === 'word') return '📝 Word';
-            if (m === 'colour') return '🎨 Colour';
-            return '🔀 Both';
+            switch (m) {
+                case 'word': return '📝 Word';
+                case 'colour': return '🎨 Colour';
+                case 'math': return '🔢 Math';
+                case 'rps': return '🪨 RPS';
+                case 'mix': return '🎲 Mix';
+                default: return m;
+            }
         });
 
         const modeClass = computed(() => {
             const m = mode.value;
-            if (m === 'word') return 'mode-word';
-            if (m === 'colour') return 'mode-colour';
-            return 'mode-both';
+            switch (m) {
+                case 'word': return 'mode-word';
+                case 'colour': return 'mode-colour';
+                case 'math': return 'mode-math';
+                case 'rps': return 'mode-rps';
+                case 'mix': return 'mode-mix';
+                default: return '';
+            }
         });
 
         const roundModeLabel = computed(() => {
-            if (mode.value !== 'both') return '';
-            return currentRoundMode.value === 'word' ? '📝 Match WORD' : '🎨 Match COLOUR';
+            if (mode.value !== 'mix') return '';
+            const m = currentRoundMode.value;
+            if (m === 'word') return '📝 Match WORD';
+            if (m === 'colour') return '🎨 Match COLOUR';
+            if (m === 'math') return '🔢 Solve MATH';
+            if (m === 'rps') return '🪨 Beat RPS';
+            return '';
         });
 
         const roundModeClass = computed(() => {
-            if (mode.value !== 'both') return '';
-            return currentRoundMode.value === 'word' ? 'mode-word' : 'mode-colour';
+            if (mode.value !== 'mix') return '';
+            const m = currentRoundMode.value;
+            if (m === 'word') return 'mode-word';
+            if (m === 'colour') return 'mode-colour';
+            if (m === 'math') return 'mode-math';
+            if (m === 'rps') return 'mode-rps';
+            return '';
         });
 
         const gridStyle = computed(() => ({
@@ -184,17 +202,39 @@ const app = createApp({
             maxWidth: Math.min(cols.value * 120, 600) + 'px',
         }));
 
+        // ----- Computed for sequence display (NEW) -----
         const currentItem = computed(() => {
-            if (currentSequenceIndex.value < sequence.value.length) {
-                return sequence.value[currentSequenceIndex.value];
+            const idx = currentSequenceIndex.value;
+            if (idx < sequence.value.length) {
+                const item = sequence.value[idx];
+                if (typeof item === 'string') {
+                    // word or colour mode
+                    return { label: item, color: gameLogic.getColourHex(item) };
+                } else if (item.expression !== undefined) {
+                    // math mode
+                    return { label: item.expression, color: null };
+                } else if (item.colour !== undefined && item.symbol !== undefined) {
+                    // rps mode
+                    const hex = gameLogic.getColourHex(item.colour);
+                    const icon = gameLogic.SYMBOL_ICONS ? gameLogic.SYMBOL_ICONS[item.symbol] : '';
+                    return { label: `${item.colour} ${item.symbol}`, color: hex };
+                }
             }
             return null;
         });
 
         const nextItem = computed(() => {
-            const nextIndex = currentSequenceIndex.value + 1;
-            if (nextIndex < sequence.value.length) {
-                return sequence.value[nextIndex];
+            const idx = currentSequenceIndex.value + 1;
+            if (idx < sequence.value.length) {
+                const item = sequence.value[idx];
+                if (typeof item === 'string') {
+                    return { label: item, color: gameLogic.getColourHex(item) };
+                } else if (item.expression !== undefined) {
+                    return { label: item.expression, color: null };
+                } else if (item.colour !== undefined && item.symbol !== undefined) {
+                    const hex = gameLogic.getColourHex(item.colour);
+                    return { label: `${item.colour} ${item.symbol}`, color: hex };
+                }
             }
             return null;
         });
@@ -216,11 +256,12 @@ const app = createApp({
             return currentSequenceIndex.value >= sequence.value.length && sequence.value.length > 0;
         });
 
-        // ----- Methods (game logic) -----
+        // ----- Core Game Functions -----
         function initGame() {
             determineRoundMode();
-            sequence.value = gameLogic.generateSequence(activeColours.value, rows.value, cols.value);
-            grid.value = gameLogic.generateGridFromSequence(sequence.value, activeColours.value, currentRoundMode.value);
+            const modeForRound = currentRoundMode.value;
+            sequence.value = gameLogic.generateSequence(modeForRound, activeColours.value, rows.value, cols.value);
+            grid.value = gameLogic.generateGridFromSequence(sequence.value, activeColours.value, modeForRound);
             currentSequenceIndex.value = 0;
             gameStarted.value = false;
             gameOver.value = false;
@@ -237,7 +278,8 @@ const app = createApp({
         }
 
         function determineRoundMode() {
-            currentRoundMode.value = gameLogic.determineRoundMode(mode.value);
+            const selected = mode.value;
+            currentRoundMode.value = gameLogic.determineRoundMode(selected);
         }
 
         function clearCardFlashes() {
@@ -282,6 +324,7 @@ const app = createApp({
             countdownValue.value = 3;
         }
 
+        // ----- Card Click Handler (updated for new modes) -----
         function handleCardClick(index) {
             if (!gameStarted.value || gameOver.value || currentSequenceIndex.value >= sequence.value.length) {
                 return;
@@ -292,11 +335,22 @@ const app = createApp({
 
             const target = sequence.value[currentSequenceIndex.value];
             let isCorrect = false;
+            const mode = currentRoundMode.value;
 
-            if (currentRoundMode.value === 'word') {
+            if (mode === 'word') {
                 isCorrect = card.wordName === target;
-            } else {
+            } else if (mode === 'colour') {
                 isCorrect = card.bgName === target;
+            } else if (mode === 'math') {
+                // target is { expression, answer }
+                const answer = target.answer;
+                isCorrect = parseInt(card.word) === answer;
+            } else if (mode === 'rps') {
+                // target is { colour, symbol }
+                // The correct card must have opposite colour and counter symbol
+                const correctColour = gameLogic.getOppositeColour(target.colour);
+                const correctSymbol = gameLogic.COUNTER[target.symbol];
+                isCorrect = (card.bgName === correctColour && card.wordName === correctSymbol);
             }
 
             if (isCorrect) {
@@ -344,8 +398,9 @@ const app = createApp({
             showRoundSummary.value = false;
             if (currentRound.value < totalRounds.value) {
                 determineRoundMode();
-                sequence.value = gameLogic.generateSequence(activeColours.value, rows.value, cols.value);
-                grid.value = gameLogic.generateGridFromSequence(sequence.value, activeColours.value, currentRoundMode.value);
+                const modeForRound = currentRoundMode.value;
+                sequence.value = gameLogic.generateSequence(modeForRound, activeColours.value, rows.value, cols.value);
+                grid.value = gameLogic.generateGridFromSequence(sequence.value, activeColours.value, modeForRound);
                 grid.value.forEach(c => { 
                     c.matched = false; 
                     c.flashCorrect = false; 
@@ -376,7 +431,31 @@ const app = createApp({
             showRoundStartModal();
         }
 
-        // ----- Settings & History -----
+        // ----- Card styling -----
+        function getCardClass(idx) {
+            const card = grid.value[idx];
+            if (!card) return '';
+            const classes = [];
+            if (gameOver.value || !gameStarted.value || currentSequenceIndex.value >= sequence.value.length) {
+                classes.push('disabled');
+            }
+            if (card.matched) classes.push('matched');
+            if (card.flashCorrect) classes.push('correct');
+            if (card.flashWrong) classes.push('wrong');
+            return classes.join(' ');
+        }
+
+        function getCardStyle(card) {
+            // Always use grey background; for math mode use black text, else colour hex
+            const bg = '#e2e8f0';
+            let color = card.bgColor; // default for word/colour/rps
+            if (currentRoundMode.value === 'math') {
+                color = '#1e293b'; // dark grey/black for math
+            }
+            return { backgroundColor: bg, color };
+        }
+
+        // ----- Settings & History (unchanged) -----
         function toggleSettings() {
             showSettings.value = !showSettings.value;
             if (showSettings.value) showHistory.value = false;
@@ -421,8 +500,6 @@ const app = createApp({
 
             const saved = saveToLocalStorage(STORAGE_KEYS.SETTINGS, settings.value);
             if (saved) {
-                // show feedback (saveStatus is not used in components, we can keep it in app)
-                // We'll just close and reset
                 showSettings.value = false;
                 resetGame();
             } else {
@@ -449,27 +526,6 @@ const app = createApp({
             if (result && result.length > 0) {
                 history.value = result;
             }
-        }
-
-        // Card styling helpers (passed to GameGrid)
-        function getCardClass(idx) {
-            const card = grid.value[idx];
-            if (!card) return '';
-            const classes = [];
-            if (gameOver.value || !gameStarted.value || currentSequenceIndex.value >= sequence.value.length) {
-                classes.push('disabled');
-            }
-            if (card.matched) classes.push('matched');
-            if (card.flashCorrect) classes.push('correct');
-            if (card.flashWrong) classes.push('wrong');
-            return classes.join(' ');
-        }
-
-        function getCardStyle(card) {
-            return {
-                backgroundColor: '#e2e8f0',
-                color: card.bgColor,
-            };
         }
 
         // Lifecycle
@@ -499,13 +555,7 @@ const app = createApp({
             }
         });
 
-        // Watch settings changes – skip during initial load
-        // (we'll keep the watch as before, but we need to import watch from vue)
-        // For simplicity, we can skip the watch and rely on reset on save.
-        // Or we can import watch from vue as well.
-        // We'll include it.
-
-        // Return all reactive state and methods for template
+        // Return
         return {
             settings,
             showSettings,
@@ -520,8 +570,6 @@ const app = createApp({
             totalTime,
             lastRoundTime,
             errorCount,
-            availableColours: AVAILABLE_COLOURS,
-            saveStatus,
             isLoading,
             showStartModal,
             isCountingDown,
@@ -543,8 +591,6 @@ const app = createApp({
             progressText,
             progressPercent,
             isGameComplete,
-            getColourHex: gameLogic.getColourHex,
-            formatTime: gameLogic.formatTime,
             getCardClass,
             getCardStyle,
             handleCardClick,
