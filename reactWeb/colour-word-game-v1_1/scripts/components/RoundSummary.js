@@ -14,7 +14,7 @@ export default defineComponent({
         <div v-if="show" class="grid-overlay">
             <div class="overlay-content summary-content">
                 <h2 class="text-2xl font-bold mb-2">
-                    ✅ Round {{ currentRound }} Complete!
+                    ✅ Round {{ currentRound  + 1 }} Complete!
                 </h2>
                 <div class="summary-stats">
                     <div class="summary-item">
