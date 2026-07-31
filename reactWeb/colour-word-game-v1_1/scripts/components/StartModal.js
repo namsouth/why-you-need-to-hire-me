@@ -17,7 +17,7 @@ export default defineComponent({
                 </div>
                 <div v-else>
                     <h2 class="text-2xl font-bold mb-4">
-                        🎯 Round {{ currentRound }}
+                        🎯 Round {{ currentRound  + 1 }}
                     </h2>
                     <button @click="$emit('start-countdown')" class="btn-primary">
                         Start Round
