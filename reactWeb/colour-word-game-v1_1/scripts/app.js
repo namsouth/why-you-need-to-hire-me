@@ -361,8 +361,9 @@ const app = createApp({
 
                 if (currentSequenceIndex.value >= sequence.value.length) {
                     const now = Date.now();
-                    lastRoundTime.value = (now - roundStartTime.value) / 1000;
-                    totalTime.value = (now - totalStartTime.value) / 1000;
+                    const roundDuration = (now - roundStartTime.value) / 1000;
+                    lastRoundTime.value = roundDuration;
+                    totalTime.value += roundDuration; ;
                     gameOver.value = true;
                     gameStarted.value = false;
                     currentRound.value++;
