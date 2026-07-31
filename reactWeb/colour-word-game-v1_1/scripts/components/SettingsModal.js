@@ -28,7 +28,9 @@ export default defineComponent({
                         <select v-model="settings.mode" class="setting-input">
                             <option value="word">Word Mode (match the word)</option>
                             <option value="colour">Colour Mode (match the background)</option>
-                            <option value="both">Both (random each round)</option>
+                            <option value="math">Math Mode (solve the equation)</option>
+                            <option value="rps">RPS Mode (counter the symbol)</option>
+                            <option value="mix">Mix (random each round)</option>
                         </select>
                     </div>
 
