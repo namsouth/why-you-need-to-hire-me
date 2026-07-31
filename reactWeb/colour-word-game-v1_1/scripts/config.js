@@ -12,7 +12,7 @@ export const AVAILABLE_COLOURS = [
 ];
 
 export const DEFAULT_SETTINGS = {
-    mode: 'both',
+    mode: 'mix',
     colours: ['Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Orange'],
     rows: 4,
     cols: 4,
