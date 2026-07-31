@@ -65,7 +65,7 @@ export default defineComponent({
                 </div>
 
                 <div class="round-info">
-                    Round {{ currentRound }} / {{ totalRounds }}
+                    Round {{ currentRound + 1 }} / {{ totalRounds }}
                 </div>
             </div>
         </div>
