@@ -1,0 +1,35 @@
+/* Small custom styles that Tailwind doesn't cover easily */
+
+html, body {
+  height: 100%;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Countdown overlay */
+.countdown-overlay {
+  backdrop-filter: blur(8px);
+}
+
+/* Foot active animation */
+.foot-active {
+  transform: scale(1.15);
+  filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.7));
+  transition: all 0.12s ease;
+}
+
+.foot-inactive {
+  opacity: 0.35;
+  transform: scale(0.95);
+  transition: all 0.12s ease;
+}
+
+/* Visual target banner */
+.target-banner {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
